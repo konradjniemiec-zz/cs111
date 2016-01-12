@@ -12,7 +12,7 @@ int main (int argc, char **argv){
       {"command", required_argument, NULL, 'c'},
 	{"rdonly",required_argument,NULL, 'r'},
 	  {"wronly",required_argument,NULL,'w' }
-    //more options go here
+	  //more options go here
   };
   int option_index = 0;
 
@@ -22,28 +22,53 @@ int main (int argc, char **argv){
     break;
 
   switch (c) {
-    case 'v': {
-    }
-    case 'r': {
-    }
-    case 'c': {
 
+  case 'v': {
+    verboseFlag=1;
+  }
+    //          case rdonly f:
+    //open file f for reading
+    /////////////
+  case 'r': {
+    if (optarg)
+      {
+	//optarg is our string
+	//check fd
+      }
+    else {
+      //NO ARGUMENT ERROR
     }
-    case '?':
-      break;
+  }
+    //          case wronly f:
+    //open file f for writing
+  case 'w': {
+    if (optarg)
+      {
+	//optarg is our string
+	//check fd
+      }
+    else {
+      //NO ARGUMENT ERROR
+    }
+
+  }
+  case 'c': {
+    int stdin, stdout, stderr;
+    //parse all args
+    //check all fds
+   
+  }
+  case '?':
+    break;
   }
   
   
   /*
-    create structure for getopt_long
-    while (we have an option left) {
-
     if (verboseFlag) printLineToSTDOUT
 
     switch on the option
     
-    case rdonly f:
-    open file f for reading
+
     case wronly f:
     open file f for writing
     case command i o e cmd args:
