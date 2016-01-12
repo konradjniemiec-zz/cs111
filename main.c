@@ -1,10 +1,39 @@
 
 #include <stdio.h>
+#include <getopt.h>
 
 int verboseFlag = 0;
 
 int main (int argc, char **argv){
   int op;
+  struct option long_opts[]
+  {
+    {"verbose", no_argument, NULL, "v"},
+      {"command", required_argument, NULL, 'c'},
+	{"rdonly",required_argument,NULL, 'r'},
+	  {"wronly",required_argument,NULL,'w' }
+    //more options go here
+  };
+  int option_index = 0;
+
+  int c = getopt_long(argc, argv,long_opts,&option_index);
+
+  if (c== -1)
+    break;
+
+  switch (c) {
+    case 'v': {
+    }
+    case 'r': {
+    }
+    case 'c': {
+
+    }
+    case '?':
+      break;
+  }
+  
+  
   /*
     create structure for getopt_long
     while (we have an option left) {
