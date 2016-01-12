@@ -76,6 +76,8 @@ void OpenFile(int flagg){
 		fprintf("ERROR OPENING FILE")
 		exit();
 	}
+	
+	//update number files, check memory, good to go
 }
   /*
     create structure for getopt_long
