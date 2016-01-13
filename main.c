@@ -148,6 +148,7 @@ int main (int argc, char **argv){
 	write(fileno(stdout),"\n",1);
         fflush(stdout);
       }
+      //error checking //check if fd's are valid
       sscanf(arg_array[0],"%d",&_stdin);
       sscanf(arg_array[1],"%d",&_stdout);
       sscanf(arg_array[2],"%d",&_stderr);
@@ -163,6 +164,9 @@ int main (int argc, char **argv){
 	//print error if this comes back
 	fprintf(stderr,"ERROR in command: %s",file);
 	exit(255);
+      }
+      else if (child_pid==-1) {
+	fprintf(stderr,"ERROR in command: %s",file);
       }
       free(arg_array);
       break;

@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-O2 -g
+CFLAGS=-O2 -g -std=gnu11
 
 simpsh : main.o
 	$(CC) main.o $(CFLAGS) -o simpsh -I.
