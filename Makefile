@@ -8,6 +8,6 @@ main.o : main.c
 dist:
 
 check:
-
+	./test.sh
 clean:
 	rm -f *.o simpsh *.tar.gz

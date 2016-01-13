@@ -5,10 +5,12 @@
 //////
 static int verboseFlag;
 int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** argv) {
-  int counter = 0; //maybe 1? if we can include 
+  int counter = 1; //starts at 1 because optarg contains the first required argument
   while (i < argc) {
-    if (argv[i][0]== '-' & argv[i][1]=='-') break; //if we hit a -- option
-
+    if (argv[i][0]== '-' && argv[i][1]=='-') {
+      printf("Found option so I stopped!");
+      break; //if we hit a -- option
+    }
     if (counter == *expected_arg_num) {
       *expected_arg_num = *expected_arg_num * 2;
       dest_arg_arr = realloc(dest_arg_arr, (*expected_arg_num + 1) * sizeof(char*));
@@ -17,6 +19,8 @@ int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** 
     dest_arg_arr[counter] = argv[i]; //maybe strcopy?
     i++; counter++;
   }
+  optind = i;
+  printf("let me examine these: args: %d, index: %d, ars thing: %s %s %s Whats in optarg?%s \n",*expected_arg_num,i,dest_arg_arr[0],dest_arg_arr[1],dest_arg_arr[2],optarg);
   dest_arg_arr[counter]='\0';
   return counter;
 }
@@ -71,14 +75,12 @@ void OpenFile(int flagg){
 
 
 int main (int argc, char **argv){
-  int op;
-  
   static struct option long_opts[] = 
     {
-      {"verbose", no_argument, "", 'v'},
-      {"command", required_argument, "", 'c'},
-      {"rdonly",required_argument,"", 'r'},
-      {"wronly",required_argument,"",'w' }
+      {"verbose", no_argument, NULL, 'v'},
+      {"command", required_argument, NULL, 'c'},
+      {"rdonly",required_argument,NULL, 'r'},
+      {"wronly",required_argument,NULL,'w' }
       //more options go here
     };
   int option_index = 0;
@@ -87,9 +89,9 @@ int main (int argc, char **argv){
 
   while(1){
 
-
+    printf("Got here!%s\n",argv[2]);
     int x = getopt_long(argc, argv,"",long_opts,&option_index);
-
+    fprintf(stderr,"Got this option back %c\n",x);
     if (x== -1)
       break;
     //capture error?
@@ -134,7 +136,9 @@ int main (int argc, char **argv){
       int numArgs = 4; 
       int _stdin, _stdout, _stderr;
       char** arg_array = malloc((numArgs+1) * sizeof(char*));
-      char** command_arg = arg_array+=3;
+      arg_array[0] = optarg;
+      printf("What do I have? %s %s",arg_array[0],optarg);
+      char** command_arg = arg_array+3;
       //parse args, if correct apply to optind for next options
       int returnVal = parseArgs(&numArgs,optind,argc,arg_array,argv);
       if (returnVal < 0) {
@@ -145,7 +149,9 @@ int main (int argc, char **argv){
       sscanf(arg_array[0],"%d",&_stdin);
       sscanf(arg_array[1],"%d",&_stdout);
       sscanf(arg_array[2],"%d",&_stderr);
+
       char * file = arg_array[3];
+      printf("I got my values here! %d %d %d %s",_stdin,_stdout,_stderr,file);
       pid_t child_pid = fork();
       if (child_pid==0) {
 	//ChildProcess
@@ -155,7 +161,8 @@ int main (int argc, char **argv){
 	execvp(file,command_arg);
 
 	//print error if this comes back
-	//exit
+	fprintf(stderr,"ERROR in command: %s",file);
+	exit(255);
       }
       break;
       
