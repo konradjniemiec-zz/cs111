@@ -39,12 +39,13 @@ int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** 
 }
 
 void checkMem(){
+  printf("All these: %d %d %d %d\n",numFds,maxFds,numThreads,maxThreads);
   if(numFds >= maxFds){
     maxFds*=2;
     ///     if ((fds = realloc(fds, maxFds)) == NULL){
-    fds = realloc(fds, maxFds);
+    fds = realloc(fds, maxFds*sizeof(int));
     if (fds== NULL){
-      fprintf(stderr,"Error Reallocating Memory\n");
+      fprintf(stderr,"Error Reallocating Memory of Fds\n");
       exit(EXIT_FAILURE);
     }
   }
@@ -52,7 +53,7 @@ void checkMem(){
     maxThreads*=2;
     threads = realloc(threads, maxThreads);
     if (threads== NULL){
-      fprintf(stderr,"Error Reallocating Memory\n");
+      fprintf(stderr,"Error Reallocating Memory of Threads\n");
       exit(EXIT_FAILURE);
     }
 
@@ -76,16 +77,17 @@ int OpenFile(int c){
     else {
     	//file exists 
     ///	printf(stderr, "Found file: %s", optarg);
-    	printf("Found file: %s", optarg);
+    	printf("Found file: %s\n", optarg);
     }
-    if ((fds[numFds] = open(optarg, flags)) ==-1){
+    fds[numFds] = open(optarg, flags);
+    if (fds[numFds] < 0)
       fprintf(stderr,"Error opening : %s\n", optarg);
       return 0;
     }
     else{
-    	numFds++;
+      numFds++; 
         checkMem();
-	return fds[numFds];
+	return fds[numFds-1]; // lame find a better way
     }
     
 }
@@ -103,8 +105,8 @@ int main (int argc, char **argv){
   if ((fds == NULL) || (threads == NULL)){
     fprintf(stderr,"Error Allocating Initial Memory\n");
   }
-  int maxFds = (100*sizeof(int));///MUST be same as the array malloc'd in main
-  int maxThreads = (100*sizeof(int));
+  maxFds = 100;
+  maxThreads = 100;
   while(1){
     static struct option long_opts[] = 
       {
@@ -132,8 +134,9 @@ int main (int argc, char **argv){
 	{
 	  //optarg is our string
 	  flags |= O_RDONLY;
-	  int fd;
-	  if (!(fd = OpenFile(x)) || !checkFD(fd))
+	  int fd= OpenFile(x);
+	  printf("What is my fd?: %d",fd);
+	  if ((fd < 0) || !checkFD(fd))
 	    fprintf(stderr,"Error in opening file %s\n",optarg);
 	  flags = 0;
 	}
@@ -149,8 +152,9 @@ int main (int argc, char **argv){
 	{
 	  //optarg is our string
 	  flags|= O_WRONLY;
-	  int fd;
-	  if (!(fd = OpenFile(x)) || !checkFD(fd))
+	  int fd= OpenFile(x);
+	  printf("What is my fd?: %d",fd);
+	  if ((fd < 0) || !checkFD(fd))
 	    fprintf(stderr,"Error in opening file %s",optarg);
 	  flags= 0;
 	}
