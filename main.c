@@ -43,7 +43,7 @@ void checkMem(){
     ///     if ((fds = realloc(fds, maxFds)) == NULL){
     fds = realloc(fds, maxFds);
     if (fds== NULL){
-      printf("Error Reallocating Memory");
+      fprintf(stderr,"Error Reallocating Memory\n");
       exit(EXIT_FAILURE);
     }
   }
@@ -51,7 +51,7 @@ void checkMem(){
     maxThreads*=2;
     threads = realloc(threads, maxThreads);
     if (threads== NULL){
-      printf("Error Reallocating Memory");
+      fprintf(fprintf,"Error Reallocating Memory\n");
       exit(EXIT_FAILURE);
     }
 
@@ -170,7 +170,7 @@ int main (int argc, char **argv){
 	//return error, set 
       }
       if (verboseFlag) {
-	write(fileno(stdout),"--command",8);
+	write(fileno(stdout),"--command",9);
 	for (int i = 0; i < returnVal; i++){
 	  write(fileno(stdout)," ",1);
 	  write(fileno(stdout),argv[i],strlen(argv[i]));

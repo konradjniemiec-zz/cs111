@@ -1,7 +1,6 @@
 #! /bin/bash
 
 
-./simpsh --command 0 1 2 ls
 function should_fail() {
     result=$?;
 
@@ -28,21 +27,21 @@ function should_succeed() {
     fi
 }
 
-tmp_file=/tmp/foo
-tmp_file2=/tmp/foo2
+tmp_file=~/foo
+tmp_file2=~/foo2
 > "$tmp_file"
 > "$tmp_file2"
 
 
-./simpsh --rdonly cantpossiblyexist 2>&1 | grep "No such file" > /dev/null
+./simpsh --rdonly cantpossiblyexist 2>&1 | grep "Error: cantpossiblyexist does not exist" > /dev/null
 should_succeed "reports missing file";
 
 
-./simpsh --rdonly Makefile | grep "No such file" > /dev/null;
+./simpsh --rdonly Makefile | grep "Error: Makefile does not exist" > /dev/null;
 should_fail "does not report file that exists"
 
 
-./simpsh --verbose --command 1 2 3 echo foo 2>&1 | grep "Bad file descriptor" > /dev/null
+./simpsh --verbose --command 1 2 3 echo foo 2>&1 | grep "ERROR in File Descriptor Options: 1 2 3" > /dev/null
 should_succeed "using a non existent file descriptor should report the error"
 
 
