@@ -39,7 +39,6 @@ int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** 
 }
 
 void checkMem(){
-  printf("All these: %d %d %d %d\n",numFds,maxFds,numThreads,maxThreads);
   if(numFds >= maxFds){
     maxFds*=2;
     ///     if ((fds = realloc(fds, maxFds)) == NULL){
@@ -80,21 +79,19 @@ int OpenFile(int c){
     	printf("Found file: %s\n", optarg);
     }
     fds[numFds] = open(optarg, flags);
-    if (fds[numFds] < 0)
+    if (fds[numFds] < 0) {
       fprintf(stderr,"Error opening : %s\n", optarg);
       return 0;
     }
-    else{
       numFds++; 
         checkMem();
-	return fds[numFds-1]; // lame find a better way
-    }
-    
+	return numFds-1;
 }
-int checkFD(int num) {
-  if (num < 0 || num >= numFds) return 0;
-  return (fcntl(fds[num], F_GETFD) != -1);
+int checkFD(int fd) {
+  if (fd < 0 || fd > numFds) return 0;
+  return (fcntl(fds[fd], F_GETFD) != -1);
 }
+
 
 int main (int argc, char **argv){
   ///might want to make these static globals so that we can easily write checkmem; EDIT: moved them
@@ -227,7 +224,7 @@ int main (int argc, char **argv){
   free(fds);
   free(threads);
   for (int k = 0; k < numFds; k++){
-  	close(files[numFds]);
+  	close(fds[numFds]);
   	numFds--;
   }
   return 0;
