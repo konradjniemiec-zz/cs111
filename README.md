@@ -1,6 +1,8 @@
 ## cs111
 ###Lab 1A
-####Avik Mohan && Konrad Niemiec
+####Avik Mohan && Konrad Niemiec 804423978
+
+Overall we have a solid solution to the 1A problem, with some solutions looking forward to future options added. We store our command threads in anticipation of wait, and have a flag bit integer to hold all file options we will add in the future portions.
 
 In our implementation there are a couple of areas posibly limited in their efficacy. Our checkMemory function, for example, is quick and simple way to implement this feature in terms of writing code, but it is less efficient due to its checkingof both the thread and file arrays.
 

@@ -124,12 +124,12 @@ should_succeed "should be able to cat from one file to the other (replace bar wi
 
 
 echo "5\n4\n3\n2\n1" > ~/list.txt
-./simpsh --verbose --rdonly ~/list.txt --wronly "$tmp_file" --command 0 1 0 sort -u > "$tmp_file"
-grep " misc/list.txt" "$tmp_file" > /dev/null
+./simpsh --verbose --rdonly ~/list.txt --wronly "$tmp_file" --command 0 1 0 sort -u > "$tmp_file2"
+grep -- "--rdonly" "$tmp_file2" > /dev/null
 should_succeed "should find verbose output of rdonly"
-grep "$tmp_file"  "$tmp_file" > /dev/null
+grep -- "--wronly"  "$tmp_file2" > /dev/null
 should_succeed "should find verbose output of wronly"
-grep "0 1 0 sort -u"  "$tmp_file" > /dev/null
+grep -- "--command 0 1 0 sort -u"  "$tmp_file2" > /dev/null
 should_succeed "should find verbose output of command"
 
 ./simpsh \
@@ -140,12 +140,15 @@ should_succeed "should find verbose output of command"
     --wronly "$tmp_file" \
     > "$tmp_file"
 
-grep "--command 0 1 0 sort -u"  "$tmp_file" > /dev/null
+grep "command 0 1 0 sort -u"  "$tmp_file" > /dev/null
 should_succeed "should find verbose output of command"
-tail -1 "$tmp_file" | grep "--wronly $tmp_file"  "$tmp_file" > /dev/null
+tail -1 "$tmp_file" | grep "wronly"  "$tmp_file" > /dev/null
 should_succeed "should find wronly after command (order of options)"
 
-./simpsh 
-
+./simpsh --verbose --rdonly ~/foo --wronly ~/foo --command 0 1 1 uniq -c > /dev/null
+should_succeed "will read and write to a single file"
+#rm ~/foo
+#rm ~/foo2
+rm ~/list.txt
 echo "Success"
 

@@ -62,7 +62,7 @@ void checkMem(){
 int OpenFile(int c){
   if (verboseFlag) {
     //this is a complicated print
-    printf("%s--Only\n", ((c=='r') ? "READ" : "WRITE"));
+    printf("--%sonly %s\n", ((c=='r') ? "rd" : "wr"),optarg);
   }
     //check existence for errors
     //use a switch on c to create  a string R_OK, W_OK, etc to use in access, calling it s???
@@ -178,12 +178,11 @@ int main (int argc, char **argv){
 	break;
       }
       if (verboseFlag) {
-	write(1,"--command",9);
+	printf("--command");
 	for (int i = 0; i < returnVal; i++){
-	  write(1," ",1);
-	  write(1,arg_array[i],strlen(arg_array[i]));
+	  printf(" %s",arg_array[i]);
 	}
-	write(1,"\n",1);
+	printf("\n");
         fflush(stdout);
       }
       //error checking //check if fd's are valid
