@@ -37,13 +37,14 @@ int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** 
   dest_arg_arr[counter]='\0';
   return counter;
 }
+
 void checkMem(){
   if(numFds >= maxFds){
     maxFds*=2;
     ///     if ((fds = realloc(fds, maxFds)) == NULL){
     fds = realloc(fds, maxFds);
     if (fds== NULL){
-      printf("Error Reallocating Memory");
+      printf("Error Reallocating Memory\n");
       exit(EXIT_FAILURE);
     }
   }
@@ -51,12 +52,13 @@ void checkMem(){
     maxThreads*=2;
     threads = realloc(threads, maxThreads);
     if (threads== NULL){
-      printf("Error Reallocating Memory");
+      printf("Error Reallocating Memory\n");
       exit(EXIT_FAILURE);
     }
 
   }
 }
+
 int OpenFile(int c){
   if (verboseFlag) {
     //this is a complicated print
@@ -77,7 +79,7 @@ int OpenFile(int c){
     	printf("Found file: %s", optarg);
     }
     if ((fds[numFds] = open(optarg, flags)) ==-1){
-      fprintf(stderr,"Error opening : %s", optarg);
+      fprintf(stderr,"Error opening : %s\n", optarg);
       return 0;
     }
     else{
@@ -99,7 +101,7 @@ int main (int argc, char **argv){
   fds = malloc(100*sizeof(int)); /// 50 fd's good? 100? 500?
   threads = malloc(100*sizeof(int));
   if ((fds == NULL) || (threads == NULL)){
-    fprintf(stderr,"Error Allocating Initial Memory");
+    fprintf(stderr,"Error Allocating Initial Memory\n");
   }
   int maxFds = (100*sizeof(int));///MUST be same as the array malloc'd in main
   int maxThreads = (100*sizeof(int));
@@ -132,11 +134,11 @@ int main (int argc, char **argv){
 	  flags |= O_RDONLY;
 	  int fd;
 	  if (!(fd = OpenFile(x)) || !checkFD(fd))
-	    fprintf(stderr,"Error in opening file %s",optarg);
+	    fprintf(stderr,"Error in opening file %s\n",optarg);
 	  flags = 0;
 	}
       else {
-	fprintf(stderr,"No arguments provided for --rdonly");
+	fprintf(stderr,"No arguments provided for --rdonly\n");
       }
       break;
     }
@@ -153,7 +155,7 @@ int main (int argc, char **argv){
 	  flags= 0;
 	}
       else {
-	fprintf(stderr,"No arguments provided for --wronly");      
+	fprintf(stderr,"No arguments provided for --wronly\n");      
       }
       break;
     }
@@ -184,7 +186,7 @@ int main (int argc, char **argv){
       sscanf(arg_array[2],"%d",&_stderr);
       if (!checkFD(_stdin) || !checkFD(_stdout) || !checkFD(_stderr))
 	{
-	  fprintf(stderr,"ERROR in File Descriptor Options: %d %d %d",_stdin,_stdout,_stderr);
+	  fprintf(stderr,"ERROR in File Descriptor Options: %d %d %d\n",_stdin,_stdout,_stderr);
 	}
       char * file = arg_array[3];
       pid_t child_pid = fork();
@@ -195,11 +197,11 @@ int main (int argc, char **argv){
 	dup2(fds[_stderr],fileno(stderr));
 	execvp(file,command_arg);
 	//print error if this comes back
-	fprintf(stderr,"ERROR in command: %s",file);
+	fprintf(stderr,"ERROR in command: %s\n",file);
 	exit(255);
       }
       else if (child_pid==-1) {
-	fprintf(stderr,"ERROR in command: %s",file);
+	fprintf(stderr,"ERROR in command: %s\n",file);
       }
       else {
 	threads[numThreads++] = child_pid;
