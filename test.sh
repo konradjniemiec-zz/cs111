@@ -18,7 +18,6 @@ function should_succeed() {
     result=$?;
 
     echo -n "==> $1 ";
-
     if [ $result -gt 0 ]; then
 	echo "FAILURE";
 	exit 1;
@@ -56,16 +55,13 @@ grep "foo" "$tmp_file" > /dev/null
 should_succeed "commands after failing commands should succeed"
 
 
-./simpsh --verbose --command 2>&1 | grep "command requires an argument" > /dev/null
+./simpsh --verbose --command 2>&1 | grep "Not enough arguments for --command, found 0 need 4" > /dev/null
 should_fail "empty command should have no options"
 
 
-./simpsh --verbose --command 1 2 3 2>&1 | grep "command requires at least 4 options" > /dev/null
+./simpsh --verbose --command 1 2 3 2>&1 | grep "Not enough arguments for --command, found 3 need 4" > /dev/null
 should_succeed "command requires at least 4 arguments"
 
-
-./simpsh --verbose --command 1 2 3 2>&1 | grep "command requires at least 4 options" > /dev/null
-should_succeed "command reports malformed command options to user on stderr"
 
 
 ./simpsh \

@@ -23,7 +23,6 @@ int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** 
   int counter = 1; //starts at 1 because optarg contains the first required argument
   while (i < argc) {
     if (strstr(argv[i],"--")) {
-      printf("Found option so I stopped!\n");
       break; //if we hit a -- option
     }
     if (counter == *expected_arg_num) {
@@ -74,19 +73,14 @@ int OpenFile(int c){
       fprintf(stderr, "Error: %s does not exist\n", optarg);
       return 0;
     }
-    else {
-    	//file exists 
-    ///	printf(stderr, "Found file: %s", optarg);
-    	printf("Found file: %s\n", optarg);
-    }
     fds[numFds] = open(optarg, flags);
     if (fds[numFds] < 0) {
       fprintf(stderr,"Error opening : %s\n", optarg);
       return 0;
     }
-      numFds++; 
-        checkMem();
-	return numFds-1;
+    numFds++; 
+    checkMem();
+    return numFds-1;
 }
 int checkFD(int fd) {
   if (fd < 0 || fd > numFds) return 0;
@@ -168,22 +162,29 @@ int main (int argc, char **argv){
       break;
     }
     case 'c': {
-      int numArgs = 4; ///hoist?
+      int numArgs = 4; 
 
       int _stdin, _stdout, _stderr;
       char** arg_array = malloc((numArgs+1) * sizeof(char*));
+      if (optarg == NULL) {
+	fprintf(stderr,"Not enough arguments for --command, found 0 need 4");
+	errFlag = 1;
+	break;
+      }
       arg_array[0] = optarg;
       char** command_arg = arg_array+3;
       //parse args, if correct apply to optind for next options
       int returnVal = parseArgs(&numArgs,optind,argc,arg_array,argv);
-      if (returnVal < 0) {
-	//return error, set 
+      if (returnVal < 4) {
+	fprintf(stderr,"Not enough arguments for --command, found %d need 4",returnVal);
+	errFlag = 1;
+	break;
       }
       if (verboseFlag) {
 	write(1,"--command",9);
 	for (int i = 0; i < returnVal; i++){
 	  write(1," ",1);
-	  write(1,argv[i],strlen(argv[i]));
+	  write(1,arg_array[i],strlen(arg_array[i]));
 	}
 	write(1,"\n",1);
         fflush(stdout);
@@ -220,12 +221,6 @@ int main (int argc, char **argv){
       }
       free(arg_array);
       break;
-      
-      
-      //check all fds
-
-      //fork and execvp
-   
     }
     case '?':
       break;
