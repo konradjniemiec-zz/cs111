@@ -52,7 +52,7 @@ void checkMem(){
     maxThreads*=2;
     threads = realloc(threads, maxThreads);
     if (threads== NULL){
-      fprintf(fprintf,"Error Reallocating Memory\n");
+      fprintf(stderr,"Error Reallocating Memory\n");
       exit(EXIT_FAILURE);
     }
 
@@ -172,12 +172,12 @@ int main (int argc, char **argv){
 	//return error, set 
       }
       if (verboseFlag) {
-	write(fileno(stdout),"--command",9);
+	write(1,"--command",9);
 	for (int i = 0; i < returnVal; i++){
-	  write(fileno(stdout)," ",1);
-	  write(fileno(stdout),argv[i],strlen(argv[i]));
+	  write(1," ",1);
+	  write(1,argv[i],strlen(argv[i]));
 	}
-	write(fileno(stdout),"\n",1);
+	write(1,"\n",1);
         fflush(stdout);
       }
       //error checking //check if fd's are valid
@@ -192,9 +192,9 @@ int main (int argc, char **argv){
       pid_t child_pid = fork();
       if (child_pid==0) {
 	//ChildProcess
-	dup2(fds[_stdin],fileno(stdin)); // actually go into file descriptor array
-	dup2(fds[_stdout],fileno(stdout)); // same for these
-	dup2(fds[_stderr],fileno(stderr));
+	dup2(fds[_stdin],0); // actually go into file descriptor array
+	dup2(fds[_stdout],1); // same for these
+	dup2(fds[_stderr],2);
 	execvp(file,command_arg);
 	//print error if this comes back
 	fprintf(stderr,"ERROR in command: %s\n",file);
