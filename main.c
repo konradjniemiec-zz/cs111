@@ -3,15 +3,19 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 //////
 /// dont wanna use static, ruins thread safety
 int verboseFlag;
 int numFds;
-int* numThreads;
+int numThreads;
 int* fds;
-int* threads;
+pid_t* threads;
 int maxFds;
 int maxThreads;
+int flags = 0;
 //////
 
 int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** argv) {
@@ -33,73 +37,60 @@ int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** 
   dest_arg_arr[counter]='\0';
   return counter;
 }
+void checkMem(){
+  if(numFds >= maxFds){
+    maxFds*=2;
+    ///     if ((fds = realloc(fds, maxFds)) == NULL){
+    fds = realloc(fds, maxFds);
+    if (fds== NULL){
+      printf("Error Reallocating Memory");
+      exit(EXIT_FAILURE);
+    }
+  }
+  if(numThreads >= maxThreads){
+    maxThreads*=2;
+    threads = realloc(threads, maxThreads);
+    if (threads== NULL){
+      printf("Error Reallocating Memory");
+      exit(EXIT_FAILURE);
+    }
 
-void OpenFile(int c){
+  }
+}
+int OpenFile(int c){
   if (verboseFlag) {
     //this is a complicated print
     printf("%s--Only\n", ((c=='r') ? "READ" : "WRITE"));
-    
+  }
     //check existence for errors
     //use a switch on c to create  a string R_OK, W_OK, etc to use in access, calling it s???
     //seemslike a lot of ppl juts use F_OK though
   //if (access(optarg, s) != -1
   //switch(c){ case'r':
     if (access(optarg, F_OK) == -1) {
-      printf(stderr, "Error: %s does not exist\n", optarg);
-      exit(); ///need to add exit val's
+      fprintf(stderr, "Error: %s does not exist\n", optarg);
+      return 0;
     }
-    else{
+    else {
     	//file exists 
     ///	printf(stderr, "Found file: %s", optarg);
     	printf("Found file: %s", optarg);
     }
-    if (fds[numFds] = open(optarg, c) ==-1){
-      printf("Error opening : %s", optarg);
+    if ((fds[numFds] = open(optarg, flags)) ==-1){
+      fprintf(stderr,"Error opening : %s", optarg);
+      return 0;
     }
     else{
     	numFds++;
-    	///checkMem()
+        checkMem();
+	return fds[numFds];
     }
     
-  }
-  /*
-    if (verboseFlag) printLineToSTDOUT
-
-    switch on the option
-    
-
-    case wronly f:
-    open file f for writing
-    case command i o e cmd args:
-    execute a command with standard input i standard output o standard error e. Executable is cmd and has args args
-    case verbose:
-    Just before executing an option, output a line to standard output containing that option.
-    verboseFlag=1;
-    }
-  */	  
 }
-
-/*
-bool checkMem(){
-	if(numFds >= maxFds){
-		maxFds*=2;
-	///	if ((fds = realloc(fds, maxFds)) == NULL){
-		fds = realloc(fds, maxFds);
-		if (fds== NULL){
-			printf("Error Reallocating Memory");
-			exit();
-		}
-	}
-	if(numThreads >= maxThreads){
-		maxThreads*=2;
-		threads = realloc(threads, maxThreads);
-		if (threads== NULL){
-			printf("Error Reallocating Memory");
-			exit();
-		}
-	
+int checkFD(int num) {
+  if (num < 0 || num >= numFds) return 0;
+  return (fcntl(fds[num], F_GETFD) != -1);
 }
-*/
 
 int main (int argc, char **argv){
   ///might want to make these static globals so that we can easily write checkmem; EDIT: moved them
@@ -108,7 +99,7 @@ int main (int argc, char **argv){
   fds = malloc(100*sizeof(int)); /// 50 fd's good? 100? 500?
   threads = malloc(100*sizeof(int));
   if ((fds == NULL) || (threads == NULL)){
-  	printf("Error Allocating Initial Memory")
+    fprintf(stderr,"Error Allocating Initial Memory");
   }
   int maxFds = (100*sizeof(int));///MUST be same as the array malloc'd in main
   int maxThreads = (100*sizeof(int));
@@ -125,14 +116,11 @@ int main (int argc, char **argv){
     int x = getopt_long(argc, argv,"",long_opts,NULL); //Not null, &some_option_index
     if (x== -1)
       break;
-    //capture error?
-
-
     switch (x) {
 
     case 'v': {
       verboseFlag=1;
-      break; //is this break correct
+      break;
     }
       //          case rdonly f:
       //open file f for reading
@@ -141,10 +129,14 @@ int main (int argc, char **argv){
       if (optarg)
 	{
 	  //optarg is our string
-	  //check fd
+	  flags |= O_RDONLY;
+	  int fd;
+	  if (!(fd = OpenFile(x)) || !checkFD(fd))
+	    fprintf(stderr,"Error in opening file %s",optarg);
+	  flags = 0;
 	}
       else {
-	//NO ARGUMENT ERROR
+	fprintf(stderr,"No arguments provided for --rdonly");
       }
       break;
     }
@@ -154,12 +146,14 @@ int main (int argc, char **argv){
       if (optarg)
 	{
 	  //optarg is our string
-	  //check fd
-	  OpenFile(x); //add option for write
+	  flags|= O_WRONLY;
+	  int fd;
+	  if (!(fd = OpenFile(x)) || !checkFD(fd))
+	    fprintf(stderr,"Error in opening file %s",optarg);
+	  flags= 0;
 	}
       else {
-	//NO ARGUMENT ERROR
-      
+	fprintf(stderr,"No arguments provided for --wronly");      
       }
       break;
     }
@@ -188,14 +182,17 @@ int main (int argc, char **argv){
       sscanf(arg_array[0],"%d",&_stdin);
       sscanf(arg_array[1],"%d",&_stdout);
       sscanf(arg_array[2],"%d",&_stderr);
-
+      if (!checkFD(_stdin) || !checkFD(_stdout) || !checkFD(_stderr))
+	{
+	  fprintf(stderr,"ERROR in File Descriptor Options: %d %d %d",_stdin,_stdout,_stderr);
+	}
       char * file = arg_array[3];
       pid_t child_pid = fork();
       if (child_pid==0) {
 	//ChildProcess
-	dup2(_stdin,fileno(stdin)); // actually go into file descriptor array
-	dup2(_stdout,fileno(stdout)); // same for these
-	dup2(_stderr,fileno(stderr));
+	dup2(fds[_stdin],fileno(stdin)); // actually go into file descriptor array
+	dup2(fds[_stdout],fileno(stdout)); // same for these
+	dup2(fds[_stderr],fileno(stderr));
 	execvp(file,command_arg);
 	//print error if this comes back
 	fprintf(stderr,"ERROR in command: %s",file);
@@ -203,6 +200,10 @@ int main (int argc, char **argv){
       }
       else if (child_pid==-1) {
 	fprintf(stderr,"ERROR in command: %s",file);
+      }
+      else {
+	threads[numThreads++] = child_pid;
+	checkMem();
       }
       free(arg_array);
       break;
