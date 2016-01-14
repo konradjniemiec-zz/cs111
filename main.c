@@ -23,7 +23,6 @@ int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** 
   int counter = 1; //starts at 1 because optarg contains the first required argument
   while (i < argc) {
     if (strstr(argv[i],"--")) {
-      printf("Found option so I stopped!\n");
       break; //if we hit a -- option
     }
     if (counter == *expected_arg_num) {
@@ -76,8 +75,7 @@ int OpenFile(int c){
     }
     else {
     	//file exists 
-    ///	printf(stderr, "Found file: %s", optarg);
-    	printf("Found file: %s\n", optarg);
+    //  fprintf(stderr, "Found file: %s", optarg);
     }
     fds[numFds] = open(optarg, flags);
     if (fds[numFds] < 0) {
@@ -92,7 +90,6 @@ int checkFD(int fd) {
   if (fd < 0 || fd > numFds) return 0;
   return (fcntl(fds[fd], F_GETFD) != -1);
 }
-
 
 int main (int argc, char **argv){
   ///might want to make these static globals so that we can easily write checkmem; EDIT: moved them
@@ -133,7 +130,6 @@ int main (int argc, char **argv){
 	  //optarg is our string
 	  flags |= O_RDONLY;
 	  int fd= OpenFile(x);
-	  printf("What is my fd?: %d",fd);
 	  if ((fd < 0) || !checkFD(fd)){
 	    fprintf(stderr,"Error in opening file %s\n",optarg);
 	    errFlag = 1;
@@ -154,7 +150,6 @@ int main (int argc, char **argv){
 	  //optarg is our string
 	  flags|= O_WRONLY;
 	  int fd= OpenFile(x);
-	  printf("What is my fd?: %d",fd);
 	  if ((fd < 0) || !checkFD(fd)){
 	    fprintf(stderr,"Error in opening file %s",optarg);
 	    errFlag = 1;
