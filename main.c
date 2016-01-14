@@ -227,7 +227,7 @@ int main (int argc, char **argv){
   	close(fds[numFds]);
   	numFds--;
   }
-  return 0;
+  return errFlag;
 }
 
   
