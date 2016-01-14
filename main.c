@@ -9,6 +9,7 @@
 //////
 /// dont wanna use static, ruins thread safety
 int verboseFlag;
+int errFlag;
 int numFds;
 int numThreads;
 int* fds;
@@ -133,12 +134,15 @@ int main (int argc, char **argv){
 	  flags |= O_RDONLY;
 	  int fd= OpenFile(x);
 	  printf("What is my fd?: %d",fd);
-	  if ((fd < 0) || !checkFD(fd))
+	  if ((fd < 0) || !checkFD(fd)){
 	    fprintf(stderr,"Error in opening file %s\n",optarg);
+	    errFlag = 1;
+	  }
 	  flags = 0;
 	}
       else {
 	fprintf(stderr,"No arguments provided for --rdonly\n");
+	errFlag = 1;
       }
       break;
     }
@@ -151,12 +155,15 @@ int main (int argc, char **argv){
 	  flags|= O_WRONLY;
 	  int fd= OpenFile(x);
 	  printf("What is my fd?: %d",fd);
-	  if ((fd < 0) || !checkFD(fd))
+	  if ((fd < 0) || !checkFD(fd)){
 	    fprintf(stderr,"Error in opening file %s",optarg);
+	    errFlag = 1;
+	  }
 	  flags= 0;
 	}
       else {
 	fprintf(stderr,"No arguments provided for --wronly\n");      
+	errFlag = 1;
       }
       break;
     }
@@ -188,6 +195,7 @@ int main (int argc, char **argv){
       if (!checkFD(_stdin) || !checkFD(_stdout) || !checkFD(_stderr))
 	{
 	  fprintf(stderr,"ERROR in File Descriptor Options: %d %d %d\n",_stdin,_stdout,_stderr);
+	errFlag = 1;
 	}
       char * file = arg_array[3];
       pid_t child_pid = fork();
@@ -199,10 +207,12 @@ int main (int argc, char **argv){
 	execvp(file,command_arg);
 	//print error if this comes back
 	fprintf(stderr,"ERROR in command: %s\n",file);
+	errFlag = 1;
 	exit(EXIT_FAILURE);
       }
       else if (child_pid==-1) {
 	fprintf(stderr,"ERROR in command: %s\n",file);
+	errFlag = 1;
       }
       else {
 	threads[numThreads++] = child_pid;
