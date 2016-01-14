@@ -202,7 +202,7 @@ int main (int argc, char **argv){
 	execvp(file,command_arg);
 	//print error if this comes back
 	fprintf(stderr,"ERROR in command: %s\n",file);
-	exit(255);
+	exit(EXIT_FAILURE);
       }
       else if (child_pid==-1) {
 	fprintf(stderr,"ERROR in command: %s\n",file);
@@ -226,6 +226,10 @@ int main (int argc, char **argv){
   }
   free(fds);
   free(threads);
+  for (int k = 0; k < numFds; k++){
+  	close(files[numFds]);
+  	numFds--;
+  }
   return 0;
 }
 
