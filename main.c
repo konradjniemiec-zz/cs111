@@ -4,7 +4,16 @@
 #include <stdlib.h>
 #include <string.h>
 //////
-static int verboseFlag;
+/// dont wanna use static, ruins thread safety
+int verboseFlag;
+int numFds;
+int* numThreads;
+int* fds;
+int* threads;
+int maxFds;
+int maxThreads;
+//////
+
 int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** argv) {
   int counter = 1; //starts at 1 because optarg contains the first required argument
   while (i < argc) {
@@ -24,37 +33,34 @@ int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** 
   dest_arg_arr[counter]='\0';
   return counter;
 }
-void OpenFile(int flagg){
+
+void OpenFile(int c){
   if (verboseFlag) {
     //this is a complicated print
-    //printf("%s-Only\n", ((c=='r') ? "READ" : "WRITE")
-	
-    //attempt to find it
-    //use a switch on c to create  a string R_OK, W_OK, etc to use in access, calling it s
+    printf("%s--Only\n", ((c=='r') ? "READ" : "WRITE"));
+    
+    //check existence for errors
+    //use a switch on c to create  a string R_OK, W_OK, etc to use in access, calling it s???
     //seemslike a lot of ppl juts use F_OK though
-    //Also Iknow you use optarg here but what the hell cant find anything on it
-    // like some secret keyword no one talks about
-	  
-    /*
-    // Check to make sure that all of the requested descriptors exist
-    for (int i = 0; i < 3; i++) {
-    if (command_args[i][0] - '0' > n_files) {
-    fprintf(stderr, "error: bad file descriptor\n");
-    return NULL;
-    }
-    }
-      
-	  
-	  
-    if (access(optarg, s) != -1){
-    //good
+  //if (access(optarg, s) != -1
+  //switch(c){ case'r':
+    if (access(optarg, F_OK) == -1) {
+      printf(stderr, "Error: %s does not exist\n", optarg);
+      exit(); ///need to add exit val's
     }
     else{
-    fprintf(stderr,"ERROR OPENING FILE");
-    exit(0);
+    	//file exists 
+    ///	printf(stderr, "Found file: %s", optarg);
+    	printf("Found file: %s", optarg);
     }
-    */	
-    //update number files, check memory, good to go
+    if (fds[numFds] = open(optarg, c) ==-1){
+      printf("Error opening : %s", optarg);
+    }
+    else{
+    	numFds++;
+    	///checkMem()
+    }
+    
   }
   /*
     if (verboseFlag) printLineToSTDOUT
@@ -73,10 +79,39 @@ void OpenFile(int flagg){
   */	  
 }
 
+/*
+bool checkMem(){
+	if(numFds >= maxFds){
+		maxFds*=2;
+	///	if ((fds = realloc(fds, maxFds)) == NULL){
+		fds = realloc(fds, maxFds);
+		if (fds== NULL){
+			printf("Error Reallocating Memory");
+			exit();
+		}
+	}
+	if(numThreads >= maxThreads){
+		maxThreads*=2;
+		threads = realloc(threads, maxThreads);
+		if (threads== NULL){
+			printf("Error Reallocating Memory");
+			exit();
+		}
+	
+}
+*/
 
 int main (int argc, char **argv){
-  //malloc for the fd's
-
+  ///might want to make these static globals so that we can easily write checkmem; EDIT: moved them
+  numFds = 0;
+  numThreads = 0; ///proccesses
+  fds = malloc(100*sizeof(int)); /// 50 fd's good? 100? 500?
+  threads = malloc(100*sizeof(int));
+  if ((fds == NULL) || (threads == NULL)){
+  	printf("Error Allocating Initial Memory")
+  }
+  int maxFds = (100*sizeof(int));///MUST be same as the array malloc'd in main
+  int maxThreads = (100*sizeof(int));
   while(1){
     static struct option long_opts[] = 
       {
@@ -87,7 +122,7 @@ int main (int argc, char **argv){
 	//more options go here
 	{0,0,0,0}
       };
-    int x = getopt_long(argc, argv,"",long_opts,NULL);
+    int x = getopt_long(argc, argv,"",long_opts,NULL); //Not null, &some_option_index
     if (x== -1)
       break;
     //capture error?
@@ -97,7 +132,7 @@ int main (int argc, char **argv){
 
     case 'v': {
       verboseFlag=1;
-      break;
+      break; //is this break correct
     }
       //          case rdonly f:
       //open file f for reading
@@ -129,7 +164,8 @@ int main (int argc, char **argv){
       break;
     }
     case 'c': {
-      int numArgs = 4; 
+      int numArgs = 4; ///hoist?
+
       int _stdin, _stdout, _stderr;
       char** arg_array = malloc((numArgs+1) * sizeof(char*));
       arg_array[0] = optarg;
@@ -181,6 +217,8 @@ int main (int argc, char **argv){
       break;
     }
   }
+  free(fds);
+  free(threads);
   return 0;
 }
 
