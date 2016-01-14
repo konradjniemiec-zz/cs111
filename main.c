@@ -87,7 +87,6 @@ int checkFD(int fd) {
   return (fcntl(fds[fd], F_GETFD) != -1);
 }
 
-
 int main (int argc, char **argv){
   ///might want to make these static globals so that we can easily write checkmem; EDIT: moved them
   numFds = 0;
@@ -127,7 +126,6 @@ int main (int argc, char **argv){
 	  //optarg is our string
 	  flags |= O_RDONLY;
 	  int fd= OpenFile(x);
-	  printf("What is my fd?: %d",fd);
 	  if ((fd < 0) || !checkFD(fd)){
 	    fprintf(stderr,"Error in opening file %s\n",optarg);
 	    errFlag = 1;
@@ -148,7 +146,6 @@ int main (int argc, char **argv){
 	  //optarg is our string
 	  flags|= O_WRONLY;
 	  int fd= OpenFile(x);
-	  printf("What is my fd?: %d",fd);
 	  if ((fd < 0) || !checkFD(fd)){
 	    fprintf(stderr,"Error in opening file %s",optarg);
 	    errFlag = 1;
