@@ -1,13 +1,13 @@
 CC=gcc
-CFLAGS=-O2
+CFLAGS=-O2 -g -std=c11
 
 simpsh : main.o
-	$(CC) $(CFLAGS) -o simpsh main.o -I.
+	$(CC) main.o $(CFLAGS) -o simpsh -I.
 main.o : main.c
-	$(CC) $(CFLAGS) main.c -o main.o
+	$(CC) $(CFLAGS) -c main.c -o main.o
 dist:
 
 check:
-
+	./test.sh
 clean:
 	rm -f *.o simpsh *.tar.gz
