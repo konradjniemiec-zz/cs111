@@ -147,8 +147,8 @@ should_succeed "should find wronly after command (order of options)"
 
 ./simpsh --verbose --rdonly ~/foo --wronly ~/foo --command 0 1 1 uniq -c > /dev/null
 should_succeed "will read and write to a single file"
-#rm ~/foo
-#rm ~/foo2
+rm ~/foo
+rm ~/foo2
 rm ~/list.txt
 echo "Success"
 
