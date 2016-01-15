@@ -1,6 +1,6 @@
 ## cs111
 ###Lab 1A
-####Avik Mohan && Konrad Niemiec 804423978
+####Avik Mohan 404339887  && Konrad Niemiec 804423978
 
 Overall we have a solid solution to the 1A problem, with some solutions looking forward to future options added. We store our command threads in anticipation of wait, and have a flag bit integer to hold all file options we will add in the future portions.
 
