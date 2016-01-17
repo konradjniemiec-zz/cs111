@@ -1,0 +1,14 @@
+child
+
+
+if (child->p_state == P_EMPTY) {
+   break;
+}  
+child->p_registers = parent->p_registers;
+copy_stack(child, parent);
+child->p_state = P_RUNNABLE;
+child->p_registers.reg_eax = 0;
+return child->p_pid;
+
+
+src_stack_top = PROC1_STACK_ADDR + (PROC_STACK_SIZE
