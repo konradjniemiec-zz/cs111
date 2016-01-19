@@ -3,6 +3,7 @@
 #include "mpos.h"
 #include "x86.h"
 
+
 // Process state type
 typedef enum procstate {
 	P_EMPTY = 0,			// The process table entry is empty
@@ -18,7 +19,8 @@ typedef struct process {
 	pid_t p_pid;			// Process ID
 
 	registers_t p_registers;	// Current process state: registers,
-					// stack location, EIP, etc.
+        
+  pid_t waiting_process;                // the pid_t of the waiting process
 					// 'registers_t' defined in x86.h
 	procstate_t p_state;		// Process state; see above
 	int p_exit_status;		// Process's exit status (if it has

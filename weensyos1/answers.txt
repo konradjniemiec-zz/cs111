@@ -5,11 +5,20 @@ UCLA ID:
 -------------------------------------------------------------------------------
 
 Response to Exercise 1:
-
+Because processes does not modify eachothers registers unless waiting,
+the eax register will have the correct pid when it returns for that
+specific process.
 
 
 Anything else you'd like us to know:
-
+For Exercise 3, I just stored the pid_t of a waiting process inside the
+process structure for an exiting process to find and set to runnable
+again. I initialize this to -1 to not confuse with any processes. If someone
+calls wait on a process, it sets itself to P_BLOCKED and the waiting 
+thread's waitin_process member to its own pid. Once a process exits and 
+finds that its waiting_process member is greater or equal to zero, it sets 
+its state to P_RUNNABLE and sets the exit status correctly. It then resets
+its waiting_process to -1 for the next process.
 
 
 Extra credit exercises:
