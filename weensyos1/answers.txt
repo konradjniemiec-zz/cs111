@@ -1,13 +1,13 @@
-Name:
-UCLA ID:
+Name: Konrad Niemiec
+UCLA ID: 804423978
 
 
 -------------------------------------------------------------------------------
 
 Response to Exercise 1:
-Because processes does not modify eachothers registers unless waiting,
-the eax register will have the correct pid when it returns for that
-specific process.
+Because processes does not modify eachothers registers unless blocking,
+and waiting the eax register will have the correct pid when it returns for 
+that specific process.
 
 
 Anything else you'd like us to know:
@@ -22,3 +22,18 @@ its waiting_process to -1 for the next process.
 
 
 Extra credit exercises:
+Exercise 5: 
+This code should produce an output of 11
+	pid_t p;
+	int x = 0;
+	int * volatile px2 = &x; // pointer to volatile data
+	x = 10;
+	p = sys_fork();
+	if (p == 0) {
+		px2 = &x;
+		*px2 = 11;
+	}
+	else
+		app_printf("%d",x);
+	sys_exit(0);	
+Exercise 6:

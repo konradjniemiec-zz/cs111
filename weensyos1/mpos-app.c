@@ -18,23 +18,17 @@ start(void)
 				     gave the child process a new stack. */
 	pid_t p;
 	int status;
-	volatile int x = 0;
-	volatile int * volatile px = &x;
 	app_printf("About to start a new process...\n");
-	*px = 10;
 	p = sys_fork();
 	if (p == 0) {
 		run_child();
-		*px++;
 	}
 	else if (p > 0) {
 		app_printf("Main process %d!\n", sys_getpid());
 		do {
 			status = sys_wait(p);
-			app_printf("W");
 		} while (status == WAIT_TRYAGAIN);
 		app_printf("Child %d exited with status %d!\n", p, status);
-		app_printf("%d",*px);
 		// Check whether the child process corrupted our stack.
 		// (This check doesn't find all errors, but it helps.)
 		if (checker != 0) {
