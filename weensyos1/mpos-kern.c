@@ -126,7 +126,8 @@ start(void)
  *****************************************************************************/
 
 static pid_t do_fork(process_t *parent);
-
+static pid_t sys_newthread(void (*start_function)(void));
+static pid_t sys_kill(pid_t process);
 void
 interrupt(registers_t *reg)
 {
@@ -155,6 +156,25 @@ interrupt(registers_t *reg)
 		current->p_registers.reg_eax = do_fork(current);
 		run(current);
 
+	case INT_SYS_NEWTHREAD: {
+	  void * f = (void *)current->p_registers.reg_eax;
+	  current->p_registers.reg_eax = (uint32_t)sys_newthread(f);
+	  run(current);
+	}
+
+	case INT_SYS_KILL: {
+	  //Kill the process in the eax register of 
+	  pid_t p = current->p_registers.reg_eax;
+	  proc_array[p].p_state = P_ZOMBIE;
+	  proc_array[p].p_exit_status = 1;
+	  if (proc_array[p].waiting_process >= 0) {
+	    proc_array[p].p_registers.reg_eax = 1;
+	    proc_array[p].waiting_process = -1;
+	  }
+	  schedule();
+	}
+
+	
 	case INT_SYS_YIELD:
 		// The 'sys_yield' system call asks the kernel to schedule a
 		// different process.  (MiniprocOS is cooperatively
@@ -326,9 +346,25 @@ copy_stack(process_t *dest, process_t *src)
 	dest->p_registers.reg_esp = dest_stack_bottom;
 	  // YOUR CODE HERE: memcpy the stack and set dest->p_registers.reg_esp
 }
+/**
+ * sys_newthread
+ * creates a thread with an empty stack and instruction pointer
+ * pointing at start_function
+ **/
 
-
-
+static pid_t sys_newthread(void (*start_function)(void)) {
+  pid_t process = 1;
+  do {
+    if (proc_array[process].p_state == P_EMPTY) {
+      proc_array[process].p_registers.reg_esp = PROC1_STACK_ADDR + process * PROC_STACK_SIZE; 
+      proc_array[process].p_state = P_RUNNABLE;
+      proc_array[process].p_registers.reg_eip = (uint32_t)start_function;
+      return process;
+    }
+    process++;
+  } while(process < NPROCS); 
+  return -1; //no available spaces for processes
+}
 /*****************************************************************************
  * schedule
  *

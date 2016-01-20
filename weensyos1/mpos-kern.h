@@ -34,7 +34,6 @@ typedef struct process {
 // Functions defined in mpos-kern.c
 void interrupt(registers_t *reg);
 void schedule(void);
-
 // Functions defined in mpos-x86.c
 void segments_init();
 void special_registers_init(process_t *proc);
