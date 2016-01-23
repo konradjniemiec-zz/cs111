@@ -38,7 +38,10 @@ int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** 
   dest_arg_arr[counter]='\0';
   return counter;
 }
-
+void sig_handler(int signum) {
+  fprintf(stderr,"%d caught",signum);
+  exit(signum);
+}
 void checkMem(){
   if(numFds >= maxFds){
     maxFds*=2;
@@ -111,6 +114,10 @@ int main (int argc, char **argv){
 	{"wait",no_argument,NULL,'a'},
 	{"close",required_argument,NULL,'l'},
 	{"abort",no_argument,NULL,'b'},
+	{"catch",required_argument,NULL,'t'},
+	{"ignore",required_argument,NULL,'i'},
+	{"default",required_argument,NULL,'d'},
+	{"pause",no_argument,NULL,'u'},
 	//more options go here
 	{0,0,0,0}
       };
@@ -188,6 +195,52 @@ int main (int argc, char **argv){
     case 'p': {
       //use pipe system call
     }
+      //catch
+    case 't': {
+      //catch signal optarg
+      if (optarg)
+	{
+	  if (verboseFlag)
+	    printf("--catch %s\n",optarg);
+	  int signum = sscanf("%d",optarg);
+	  struct sigaction action;
+	  action.sa_handler = sig_handler;
+	  sigemptyset(&action.sa_mask);
+	  action.sa_flags = 0;
+	  if (sigaction(signum,&action,NULL) < 0)
+	    fprintf(stderr,"Error when creating handler for signal %s",optarg);
+	}
+      else 
+	{
+	  fprintf(stderr,"No arguments provided for --catch\n");
+	  errFlag = 1;
+	}
+    }
+    case 'd': {
+      if (optarg)
+	{
+	  if (verboseFlag)
+	    printf("--default %s\n",optarg);
+	  int signum = sscanf("%d",optarg);
+	  struct sigaction def;
+	  def.sa_handler = SIG_DFL;
+	  sigemptyset(&def.sa_flags);
+	  def.sa_flags = 0;
+	  if (sigaction(signum,&def,NULL) < 0)
+	    fprintf(stderr,"Error when creating default handler");
+	}
+      else 
+	{
+	  fprintf(stderr,"No arguments provided for --default\n");
+	  errFlag = 1;
+	}
+    }
+    case 'u': {
+      //pause
+      if (verboseFlag)
+	printf("--pause\n");
+      pause();
+    }
       //command 
     case 'c': {
       int numArgs = 4; 
@@ -253,6 +306,8 @@ int main (int argc, char **argv){
       //wait option
     case 'a': {
       int exitStatus = 0;
+      if (verboseFlag)
+	printf("--wait\n");
       for (int i = 0; i < numThreads; i++) {
 	int status;
 	wait(threads[i],&status,0);
@@ -270,6 +325,8 @@ int main (int argc, char **argv){
     case 'l': {
       if (optarg)
 	{
+	  if (verboseFlag)
+	    printf("--close %s",optarg);
 	  //optarg is our string
 	  int fd;
 	  sscanf(optarg,"%d",&fd);
@@ -291,6 +348,8 @@ int main (int argc, char **argv){
 
     }
     case 'b': {
+      if (verboseFlag)
+	printf("--abort\n");
       abort();
     }
     case '?':
