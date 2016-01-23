@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <signal.h>
 //////
@@ -310,7 +311,7 @@ int main (int argc, char **argv){
 	printf("--wait\n");
       for (int i = 0; i < numThreads; i++) {
 	int status;
-	wait(threads[i],&status,0);
+	waitpid(threads[i],&status,0);
 	
 	if (status > exitStatus)
 	  exitStatus = status;
