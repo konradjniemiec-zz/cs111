@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <signal.h>
 //////
 /// dont wanna use static, ruins thread safety
 int verboseFlag;
@@ -105,6 +106,11 @@ int main (int argc, char **argv){
 	{"command", required_argument, NULL, 'c'},
 	{"rdonly",required_argument,NULL, 'r'},
 	{"wronly",required_argument,NULL,'w' },
+	{"rdwr",required_argument,NULL,'-'},
+	{"pipe",no_argument,NULL,'p'},
+	{"wait",no_argument,NULL,'a'},
+	{"close",required_argument,NULL,'l'},
+	{"abort",no_argument,NULL,'b'},
 	//more options go here
 	{0,0,0,0}
       };
@@ -113,8 +119,28 @@ int main (int argc, char **argv){
       break;
     switch (x) {
 
+      //verbose flag
     case 'v': {
       verboseFlag=1;
+      break;
+    }
+      //rdwr option
+    case '-': {
+      if (optarg)
+	{
+	  //optarg is our string
+	  flags |= O_RDWR;
+	  int fd= OpenFile(x);
+	  if ((fd < 0) || !checkFD(fd)){
+	    fprintf(stderr,"Error in opening file %s\n",optarg);
+	    errFlag = 1;
+	  }
+	  flags = 0;
+	}
+      else {
+	fprintf(stderr,"No arguments provided for --rdwr\n");
+	errFlag = 1;
+      }
       break;
     }
       //          case rdonly f:
@@ -158,6 +184,11 @@ int main (int argc, char **argv){
       }
       break;
     }
+      //pipe
+    case 'p': {
+      //use pipe system call
+    }
+      //command 
     case 'c': {
       int numArgs = 4; 
 
@@ -213,10 +244,54 @@ int main (int argc, char **argv){
       }
       else {
 	threads[numThreads++] = child_pid;
+	//TODO store command_arg in a struct
 	checkMem();
       }
       free(arg_array);
       break;
+    }
+      //wait option
+    case 'a': {
+      int exitStatus = 0;
+      for (int i = 0; i < numThreads; i++) {
+	int status;
+	wait(threads[i],&status,0);
+	
+	if (status > exitStatus)
+	  exitStatus = status;
+	
+	
+	//TODO print exit status and copy of the command
+
+      }
+      errFlag = exitStatus;
+    }
+      //close option
+    case 'l': {
+      if (optarg)
+	{
+	  //optarg is our string
+	  int fd;
+	  sscanf(optarg,"%d",&fd);
+	  if (checkFD(fd)){
+	    close(fd);
+	  }
+	  else {
+	    fprintf(stderr,"Error in closing file %s\n",optarg);
+	    errFlag = 1;
+	  }
+
+	}
+      else {
+	fprintf(stderr,"No arguments provided for --close\n");
+	errFlag = 1;
+      }
+      break;
+
+
+    }
+    case 'b': {
+      abort();
     }
     case '?':
       break;

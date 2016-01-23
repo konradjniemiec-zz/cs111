@@ -37,3 +37,15 @@ This code should produce an output of 11
 		app_printf("%d",x);
 	sys_exit(0);	
 Exercise 6:
+I also implemented exercise 6, with a simple
+system call that simply creates a new process
+much in the way that for does, except it does
+not copy the registers or the stack, simply
+sets esp and eip to the top of the stack and
+the passed in function respectivly.
+Exercise 7:
+I implemented this as a shortcut to the exit
+system call, with pretty much the same code
+except for it not being the current function.
+I also set the exit code to 1, which I'm not 
+sure if it is correct.
