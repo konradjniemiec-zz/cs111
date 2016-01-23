@@ -135,7 +135,6 @@ int main (int argc, char **argv){
 	{0,0,0,0}
       };
     int x = getopt_long(argc, argv,"",long_opts,NULL); //Not null, &some_option_index
-    int k;
     if (x== -1)
       break;
     switch (x) {
