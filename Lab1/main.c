@@ -67,7 +67,19 @@ void checkMem(){
 int OpenFile(int c){
   if (verboseFlag) {
     //this is a complicated print
-    printf("--%sonly %s\n", ((c=='r') ? "rd" : "wr"),optarg);
+    char x[];
+    switch(c){
+    	case 'r':{
+    	    x = "rdonly";
+    	}
+    	case 'w': {
+    	    x = "wronly";
+    	}
+    	case '-': {
+    	    x = "rdwr"
+    	}
+    }
+    printf("--%s\n", x);
   }
     //check existence for errors
     //use a switch on c to create  a string R_OK, W_OK, etc to use in access, calling it s???
