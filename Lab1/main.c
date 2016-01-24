@@ -73,7 +73,19 @@ void checkMem(){
 int OpenFile(int c){
   if (verboseFlag) {
     //this is a complicated print
-    printf("--%sonly %s\n", ((c=='r') ? "rd" : "wr"),optarg);
+    char x[];
+    switch(c){
+    	case 'r':{
+    	    x = "rdonly";
+    	}
+    	case 'w': {
+    	    x = "wronly";
+    	}
+    	case '-': {
+    	    x = "rdwr"
+    	}
+    }
+    printf("--%s\n", x);
   }
     //check existence for errors
     //use a switch on c to create  a string R_OK, W_OK, etc to use in access, calling it s???
@@ -125,6 +137,18 @@ int main (int argc, char **argv){
 	{"ignore",required_argument,NULL,'i'},
 	{"default",required_argument,NULL,'d'},
 	{"pause",no_argument,NULL,'u'},
+	/**/
+        {"append",no_argument, 0, 'A'},
+        {"cloexec",no_argument, 0, 'B'},
+	{"creat", no_argument, 0, 'C'},
+        {"directory",no_argument, 0, 'D},
+        {"dsync",no_argument, 0, 'E'},
+        {"excl",no_argument, 0, 'F'},
+        {"nofollow",no_argument, 0, 'G'},
+        {"nonblock",no_argument, 0, 'H'},
+        {"rsync",no_argument, 0, 'I'},
+        {"sync",no_argument, 0, 'J'},
+        {"trunc", no_argument, 0, 'K'},
 	//more options go here
 	{0,0,0,0}
       };
@@ -132,8 +156,73 @@ int main (int argc, char **argv){
     if (x== -1)
       break;
     switch (x) {
-
-      //verbose flag
+    case 'A': {
+    	if (verboseFlag){
+    		fprintf("--append ");
+    	}
+    	flags |= O_APPEND
+    }
+    case 'B': {
+    	if (verboseFlag){
+    		fprintf("--cloexec ");
+    	}
+    	flags |= O_CLOEXEC
+    }
+    case 'C': {
+    	if (verboseFlag){
+    		fprintf("--creat ");
+    	}
+    	flags |= O_CREAT
+    }
+    case 'D': {
+    	if (verboseFlag){
+    		fprintf("--directory ");
+    	}
+    	flags |= O_DIRECTORY
+    }
+    case 'E': {
+    	if (verboseFlag){
+    		fprintf("--dsync ");
+    	}
+    	flags |= O_DSYNC
+    }
+    case 'F': {
+    	if (verboseFlag){
+    		fprintf("--excl ");
+    	}
+    	flags |= O_EXCL
+    }
+    case 'G': {
+    	if (verboseFlag){
+    		fprintf("--nofollow ");
+    	}
+    	flags |= O_NOFOLLOW
+    }
+    case 'H': {
+    	if (verboseFlag){
+    		fprintf("--nonblock ");
+    	}
+    	flags |= O_NONBLOCK
+    }
+    case 'I': {
+    	if (verboseFlag){
+    		fprintf("--rsync ");
+    	}
+    	flags |= O_RSYNC
+    }
+    case 'J': {
+    	if (verboseFlag){
+    		fprintf("--sync ");
+    	}
+    	flags |= O_SYNC
+    }
+    case 'K': {
+    	if (verboseFlag){
+    		fprintf("--trunc ");
+    	}
+    	flags |= O_TRUNC
+    }
+    
     case 'v': {
       verboseFlag=1;
       break;
