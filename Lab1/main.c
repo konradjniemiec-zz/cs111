@@ -12,7 +12,7 @@
 #include <sys/wait.h>
 #include <sys/signal.h>
 #include <fcntl.h>
-
+#include <errno.h>
 struct thread_info {
   char** argv;
   pid_t pid;
@@ -21,6 +21,7 @@ struct thread_info {
 /// dont wanna use static, ruins thread safety
 int verboseFlag;
 int errFlag;
+int waitFlag;
 int numFds;
 int numThreads;
 int* fds;
@@ -118,6 +119,7 @@ int checkFD(int fd) {
 
 int main (int argc, char **argv){
   ///might want to make these static globals so that we can easily write checkmem; EDIT: moved them
+  waitFlag = 0;
   numFds = 0;
   numThreads = 0; ///proccesses
   fds = malloc(100*sizeof(int)); /// 50 fd's good? 100? 500?
@@ -314,9 +316,12 @@ int main (int argc, char **argv){
 	  fprintf(stderr,"Error when opening pipe\n");
 	  break;
 	}
-      fds[numFds++]=pipeaddr[0];
+      fds[numFds]=pipeaddr[0];
+      numFds++;
       checkMem();
-      fds[numFds++]=pipeaddr[1];
+      fds[numFds]=pipeaddr[1];
+      numFds++;
+      fprintf(stderr,"Errors here ? %d 0 is: %d %d 1 is: %d %d\n",numFds,pipeaddr[0],fds[numFds-2],pipeaddr[1],fds[numFds-1]);
       checkMem();
       
       break;
@@ -441,7 +446,7 @@ int main (int argc, char **argv){
 	//print error if this comes back
 	fprintf(stderr,"ERROR in command: %s\n",file);
 	errFlag = 1;
-	exit(EXIT_FAILURE);
+	_exit(EXIT_FAILURE);
       }
       else if (child_pid==-1) {
 	fprintf(stderr,"ERROR in command: %s\n",file);
@@ -457,25 +462,10 @@ int main (int argc, char **argv){
     }
       //wait option
     case 'a': {
-      int exitStatus = 0;
-      if (verboseFlag)
+            if (verboseFlag)
 	printf("--wait\n");
-      for (int i = 0; i < numThreads; i++) {
-	int status;
-	waitpid(threads[i].pid,&status,WNOHANG);
-	
-	if (status > exitStatus)
-	  exitStatus = status;
-	printf("%d",status);
-	char** word = threads[i].argv;
-	while (word[0] != 0) {
-	  printf(" %s",word[0]);
-	  word++;
-	}
-	printf("\n");
 
-      }
-      errFlag = exitStatus;
+      waitFlag = 1;
       break;
     }
       //close option
@@ -516,7 +506,31 @@ int main (int argc, char **argv){
   free(threads);
   for (int k = 0; k < numFds; k++){
   	close(fds[numFds]);
-  	numFds--;
+  }
+  if (waitFlag) {
+        int exitStatus = 0;
+      int status;
+      pid_t pid;
+      while ((pid = waitpid(-1,&status,WUNTRACED)) > 0) {
+	int j;
+	for (int i = 0; i < numThreads; i++) {
+	  if (threads[i].pid==pid) {
+	    j = i;
+	    break;
+	  }
+	}
+	int realStatus = WEXITSTATUS(status);
+	if (realStatus > exitStatus)
+	  exitStatus = realStatus;
+	printf("%d",realStatus);
+	char** word = threads[j].argv;
+	while (word[0] != 0) {
+	  printf(" %s",word[0]);
+	  word++;
+	}
+	printf("\n");
+      }
+      errFlag = exitStatus;
   }
   return errFlag;
 }
