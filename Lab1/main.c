@@ -1,3 +1,7 @@
+#define _XOPEN_SOURCE
+
+
+#include <signal.h>
 #include <unistd.h> 
 #include <stdio.h>
 #include <getopt.h>
@@ -6,8 +10,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/signal.h>
 #include <fcntl.h>
-#include <signal.h>
+
+
 //////
 /// dont wanna use static, ruins thread safety
 int verboseFlag;
@@ -225,7 +231,7 @@ int main (int argc, char **argv){
 	  int signum = sscanf("%d",optarg);
 	  struct sigaction def;
 	  def.sa_handler = SIG_DFL;
-	  sigemptyset(&def.sa_flags);
+	  sigemptyset(&def.sa_mask);
 	  def.sa_flags = 0;
 	  if (sigaction(signum,&def,NULL) < 0)
 	    fprintf(stderr,"Error when creating default handler");

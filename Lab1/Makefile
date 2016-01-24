@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-O2 -g -std=c11
+CFLAGS=-O2 -g -std=c99
 USER=konradjniemiec
 
 
