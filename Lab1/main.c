@@ -80,25 +80,36 @@ int OpenFile(int c){
   if (verboseFlag) {
     //this is a complicated print
     switch(c){
-    	case 'r':{
-	  printf("--rdonly %s\n",optarg);
-	  break;
-    	}
-    	case 'w': {
-	  printf("--wronly %s\n",optarg);
-	  break;
-    	}
-    	case '-': {
-	  printf("--rdwr %s\n",optarg);
-	  break;
-    	}
+    case 'r':{
+      printf("--rdonly %s\n",optarg);
+      if (access(optarg, R_OK) == -1) {
+	fprintf(stderr, "Error: Read Permission Denied\n", optarg);
+	return -1;
+      }
+      break;
     }
-  }
+    case 'w': {
+      printf("--wronly %s\n",optarg);
+      if (access(optarg, W_OK) == -1) {
+	fprintf(stderr, "Error: Write Permission Denied\n", optarg);
+	return -1;
+      }
+      break;
+    }    
+    case '-': {
+      printf("--rdwr %s\n",optarg);
+      if (access(optarg, R_OK) == -1) {
+	fprintf(stderr, "Error: Read-Write Permission Denied\n", optarg);
+	return -1;
+      }
+      break;
+    }
+    }
     //check existence for errors
     //use a switch on c to create  a string R_OK, W_OK, etc to use in access, calling it s???
     //seemslike a lot of ppl juts use F_OK though
-  //if (access(optarg, s) != -1
-  //switch(c){ case'r':
+    //if (access(optarg, s) != -1
+    //switch(c){ case'r':
     if (access(optarg, F_OK) == -1) {
       fprintf(stderr, "Error: %s does not exist\n", optarg);
       return 0;
@@ -112,6 +123,7 @@ int OpenFile(int c){
     checkMem();
     return numFds-1;
 }
+
 int checkFD(int fd) {
   if (fd < 0 || fd > numFds) return 0;
   return (fcntl(fds[fd], F_GETFD) != -1);
