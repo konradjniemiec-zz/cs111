@@ -13,7 +13,10 @@
 #include <sys/signal.h>
 #include <fcntl.h>
 
-
+struct thread_info {
+  char** argv;
+  pid_t pid;
+};
 //////
 /// dont wanna use static, ruins thread safety
 int verboseFlag;
@@ -21,11 +24,13 @@ int errFlag;
 int numFds;
 int numThreads;
 int* fds;
-pid_t* threads;
+struct thread_info* threads;
 int maxFds;
 int maxThreads;
 int flags = 0;
 //////
+
+
 
 int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** argv) {
   int counter = 1; //starts at 1 because optarg contains the first required argument
@@ -46,7 +51,7 @@ int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** 
   return counter;
 }
 void sig_handler(int signum) {
-  fprintf(stderr,"%d caught",signum);
+  fprintf(stderr,"%d caught\n",signum);
   exit(signum);
 }
 void checkMem(){
@@ -76,12 +81,15 @@ int OpenFile(int c){
     switch(c){
     	case 'r':{
 	  printf("--rdonly %s\n",optarg);
+	  break;
     	}
     	case 'w': {
 	  printf("--wronly %s\n",optarg);
+	  break;
     	}
     	case '-': {
 	  printf("--rdwr %s\n",optarg);
+	  break;
     	}
     }
   }
@@ -113,7 +121,7 @@ int main (int argc, char **argv){
   numFds = 0;
   numThreads = 0; ///proccesses
   fds = malloc(100*sizeof(int)); /// 50 fd's good? 100? 500?
-  threads = malloc(100*sizeof(int));
+  threads = malloc(100*sizeof(struct thread_info));
   if ((fds == NULL) || (threads == NULL)){
     fprintf(stderr,"Error Allocating Initial Memory\n");
   }
@@ -159,66 +167,77 @@ int main (int argc, char **argv){
     		printf("--append ");
     	}
     	flags |= O_APPEND;
+	break;
     }
     case 'B': {
     	if (verboseFlag){
     		printf("--cloexec ");
     	}
     	flags |= O_CLOEXEC;
+	break;
     }
     case 'C': {
     	if (verboseFlag){
     		printf("--creat ");
     	}
     	flags |= O_CREAT;
+	break;
     }
     case 'D': {
     	if (verboseFlag){
     		printf("--directory ");
     	}
     	flags |= O_DIRECTORY;
+	break;
     }
     case 'E': {
     	if (verboseFlag){
     		printf("--dsync ");
     	}
     	flags |= O_DSYNC;
+	break;
     }
     case 'F': {
     	if (verboseFlag){
     		printf("--excl ");
     	}
     	flags |= O_EXCL;
+	break;
     }
     case 'G': {
     	if (verboseFlag){
     		printf("--nofollow ");
     	}
     	flags |= O_NOFOLLOW;
+	break;
     }
     case 'H': {
     	if (verboseFlag){
     		printf("--nonblock ");
     	}
     	flags |= O_NONBLOCK;
+	break;
     }
     case 'I': {
     	if (verboseFlag){
     		printf("--rsync ");
     	}
     	flags |= O_RSYNC;
+	break;
     }
     case 'J': {
     	if (verboseFlag){
     		printf("--sync ");
     	}
     	flags |= O_SYNC;
+	break;
     }
     case 'K': {
     	if (verboseFlag){
     		printf("--trunc ");
     	}
     	flags |= O_TRUNC;
+	break;
     }
     
     case 'v': {
@@ -274,7 +293,7 @@ int main (int argc, char **argv){
 	  flags|= O_WRONLY;
 	  int fd= OpenFile(x);
 	  if ((fd < 0) || !checkFD(fd)){
-	    fprintf(stderr,"Error in opening file %s",optarg);
+	    fprintf(stderr,"Error in opening file %s\n",optarg);
 	    errFlag = 1;
 	  }
 	  flags= 0;
@@ -287,7 +306,20 @@ int main (int argc, char **argv){
     }
       //pipe
     case 'p': {
-      //use pipe system call
+      if (verboseFlag)
+	printf("--verbose\n");
+      int pipeaddr[2];
+      if (pipe (pipeaddr) == -1)
+	{
+	  fprintf(stderr,"Error when opening pipe\n");
+	  break;
+	}
+      fds[numFds++]=pipeaddr[0];
+      checkMem();
+      fds[numFds++]=pipeaddr[1];
+      checkMem();
+      
+      break;
     }
       //catch
     case 't': {
@@ -296,44 +328,70 @@ int main (int argc, char **argv){
 	{
 	  if (verboseFlag)
 	    printf("--catch %s\n",optarg);
-	  int signum = sscanf("%d",optarg);
+	  int signum;
+	  sscanf(optarg,"%d",&signum);
 	  struct sigaction action;
 	  action.sa_handler = sig_handler;
-	  sigemptyset(&action.sa_mask);
+	  sigfillset(&action.sa_mask);
 	  action.sa_flags = 0;
-	  if (sigaction(signum,&action,NULL) < 0)
-	    fprintf(stderr,"Error when creating handler for signal %s",optarg);
+	  if (sigaction(signum,&action,NULL) == -1)
+	    fprintf(stderr,"Error when creating handler for signal %s\n",optarg);
 	}
       else 
 	{
 	  fprintf(stderr,"No arguments provided for --catch\n");
 	  errFlag = 1;
 	}
+      break;
     }
     case 'd': {
       if (optarg)
 	{
 	  if (verboseFlag)
 	    printf("--default %s\n",optarg);
-	  int signum = sscanf("%d",optarg);
+	  int signum;
+	  sscanf(optarg,"%d",&signum);
 	  struct sigaction def;
 	  def.sa_handler = SIG_DFL;
 	  sigemptyset(&def.sa_mask);
 	  def.sa_flags = 0;
 	  if (sigaction(signum,&def,NULL) < 0)
-	    fprintf(stderr,"Error when creating default handler");
+	    fprintf(stderr,"Error when creating default handler\n");
 	}
       else 
 	{
 	  fprintf(stderr,"No arguments provided for --default\n");
 	  errFlag = 1;
 	}
+      break;
+    }
+    case 'i': {
+      if (optarg)
+	{
+	  if (verboseFlag)
+	    printf("--ignore %s\n",optarg);
+	  int signum;
+	  sscanf(optarg,"%d",&signum);
+	  struct sigaction def;
+	  def.sa_handler =  SIG_IGN;
+	  sigemptyset(&def.sa_mask);
+	  def.sa_flags = 0;
+	  if (sigaction(signum,&def,NULL) < 0)
+	    fprintf(stderr,"Error when creating ignore handler\n");
+	}
+      else
+	{
+	  fprintf(stderr,"No arguments provided for --default\n");
+	  errFlag = 1;
+	}
+      break;
     }
     case 'u': {
       //pause
       if (verboseFlag)
 	printf("--pause\n");
       pause();
+      break;
     }
       //command 
     case 'c': {
@@ -342,7 +400,7 @@ int main (int argc, char **argv){
       int _stdin, _stdout, _stderr;
       char** arg_array = malloc((numArgs+1) * sizeof(char*));
       if (optarg == NULL) {
-	fprintf(stderr,"Not enough arguments for --command, found 0 need 4");
+	fprintf(stderr,"Not enough arguments for --command, found 0 need 4\n");
 	errFlag = 1;
 	break;
       }
@@ -351,7 +409,7 @@ int main (int argc, char **argv){
       //parse args, if correct apply to optind for next options
       int returnVal = parseArgs(&numArgs,optind,argc,arg_array,argv);
       if (returnVal < 4) {
-	fprintf(stderr,"Not enough arguments for --command, found %d need 4",returnVal);
+	fprintf(stderr,"Not enough arguments for --command, found %d need 4\n",returnVal);
 	errFlag = 1;
 	break;
       }
@@ -390,8 +448,8 @@ int main (int argc, char **argv){
 	errFlag = 1;
       }
       else {
-	threads[numThreads++] = child_pid;
-	//TODO store command_arg in a struct
+	threads[numThreads].pid = child_pid;
+	threads[numThreads++].argv = command_arg;
 	checkMem();
       }
       free(arg_array);
@@ -404,16 +462,21 @@ int main (int argc, char **argv){
 	printf("--wait\n");
       for (int i = 0; i < numThreads; i++) {
 	int status;
-	waitpid(threads[i],&status,0);
+	waitpid(threads[i].pid,&status,WNOHANG);
 	
 	if (status > exitStatus)
 	  exitStatus = status;
-	
-	
-	//TODO print exit status and copy of the command
+	printf("%d",status);
+	char** word = threads[i].argv;
+	while (word[0] != 0) {
+	  printf(" %s",word[0]);
+	  word++;
+	}
+	printf("\n");
 
       }
       errFlag = exitStatus;
+      break;
     }
       //close option
     case 'l': {
@@ -438,13 +501,12 @@ int main (int argc, char **argv){
 	errFlag = 1;
       }
       break;
-
-
     }
     case 'b': {
       if (verboseFlag)
 	printf("--abort\n");
       abort();
+      break;
     }
     case '?':
       break;
