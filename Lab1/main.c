@@ -22,12 +22,15 @@ struct thread_info {
 int verboseFlag;
 int errFlag;
 int waitFlag;
+int numPipes;
 int numFds;
 int numThreads;
+int* pipes;
 int* fds;
 struct thread_info* threads;
 int maxFds;
 int maxThreads;
+int maxPipes;
 int flags = 0;
 //////
 
@@ -74,6 +77,14 @@ void checkMem(){
     }
 
   }
+  if(numPipes >= maxPipes) {
+    maxPipes *=2;
+    pipes = realloc(pipes,maxPipes);
+    if (pipes == NULL) {
+      fprintf(stderr,"Error Reallocating Memory of Pipes\n");
+      exit(EXIT_FAILURE);
+    }
+  }
 }
 
 int OpenFile(int c){
@@ -112,23 +123,48 @@ int OpenFile(int c){
     checkMem();
     return numFds-1;
 }
+int isPipe(int fd) {
+  int realFd = fds[fd];
+  for (int i = 0; i < numPipes; i++) {
+    if (pipes[i] == realFd) return 1;
+  }
+  return 0;
+}
 int checkFD(int fd) {
   if (fd < 0 || fd > numFds) return 0;
   return (fcntl(fds[fd], F_GETFD) != -1);
 }
+int closePipeCompanion(int fd) {
+  if (checkFD(fd)) return (close(fds[fd])==0);
+  return 0;
+}
+int checkReadPipe(int fd) {
+  if (isPipe(fd) && isPipe(fd+1)) {
+    return closePipeCompanion(fd+1);
+  }
+}
+int checkWritePipe(int fd) {
+  if (isPipe(fd) && isPipe(fd-1)) {
+    return closePipeCompanion(fd-1);
+  }
+}
+
 
 int main (int argc, char **argv){
   ///might want to make these static globals so that we can easily write checkmem; EDIT: moved them
   waitFlag = 0;
   numFds = 0;
   numThreads = 0; ///proccesses
-  fds = malloc(100*sizeof(int)); /// 50 fd's good? 100? 500?
-  threads = malloc(100*sizeof(struct thread_info));
-  if ((fds == NULL) || (threads == NULL)){
-    fprintf(stderr,"Error Allocating Initial Memory\n");
-  }
+  numPipes = 0;
   maxFds = 100;
   maxThreads = 100;
+  maxPipes = 25;
+  fds = malloc(maxFds*sizeof(int)); /// 50 fd's good? 100? 500?
+  threads = malloc(maxThreads*sizeof(struct thread_info));
+  pipes = malloc(maxPipes*sizeof(int));
+  if ((fds == NULL) || (threads == NULL) || (pipes == NULL)){
+    fprintf(stderr,"Error Allocating Initial Memory\n");
+  }
   while(1){
     static struct option long_opts[] = 
       {
@@ -309,7 +345,7 @@ int main (int argc, char **argv){
       //pipe
     case 'p': {
       if (verboseFlag)
-	printf("--verbose\n");
+	printf("--pipe\n");
       int pipeaddr[2];
       if (pipe (pipeaddr) == -1)
 	{
@@ -317,11 +353,14 @@ int main (int argc, char **argv){
 	  break;
 	}
       fds[numFds]=pipeaddr[0];
+      pipes[numPipes]=pipeaddr[0];
       numFds++;
+      numPipes++;
       checkMem();
       fds[numFds]=pipeaddr[1];
+      pipes[numPipes]=pipeaddr[1];
+      numPipes++;
       numFds++;
-      fprintf(stderr,"Errors here ? %d 0 is: %d %d 1 is: %d %d\n",numFds,pipeaddr[0],fds[numFds-2],pipeaddr[1],fds[numFds-1]);
       checkMem();
       
       break;
@@ -433,12 +472,13 @@ int main (int argc, char **argv){
       if (!checkFD(_stdin) || !checkFD(_stdout) || !checkFD(_stderr))
 	{
 	  fprintf(stderr,"ERROR in File Descriptor Options: %d %d %d\n",_stdin,_stdout,_stderr);
-	errFlag = 1;
+	  errFlag = 1;
 	}
       char * file = arg_array[3];
       pid_t child_pid = fork();
       if (child_pid==0) {
 	//ChildProcess
+	fprintf(stderr,"We need to do all three: %d %d %d\n",checkReadPipe(_stdin),checkWritePipe(_stdout),checkWritePipe(_stderr));
 	dup2(fds[_stdin],0); // actually go into file descriptor array
 	dup2(fds[_stdout],1); // same for these
 	dup2(fds[_stderr],2);
