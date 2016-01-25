@@ -51,15 +51,17 @@ char * buildStr(char** argv) {
   return buf;
 }
 
-int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** argv) {
+int parseArgs(int* expected_arg_num,int i, int argc,char*** _arg_array, char** argv) {
   int counter = 1; //starts at 1 because optarg contains the first required argument
+  int argnum = *expected_arg_num;
+  char** dest_arg_arr = *_arg_array;
   while (i < argc) {
     if (strstr(argv[i],"--")) {
       break; //if we hit a -- option
     }
-    if (counter == *expected_arg_num) {
-      *expected_arg_num = *expected_arg_num * 2;
-      dest_arg_arr = realloc(dest_arg_arr, (*expected_arg_num + 1) * sizeof(char*));
+    if (counter == argnum) {
+      argnum = argnum * 2;
+      dest_arg_arr = realloc(dest_arg_arr, (argnum + 1) * sizeof(char*));
     }
     
     dest_arg_arr[counter] = argv[i]; //maybe strcopy?
@@ -67,6 +69,8 @@ int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** 
   }
   optind = i;
   dest_arg_arr[counter]='\0';
+  *expected_arg_num = argnum;
+  *_arg_array = dest_arg_arr;
   return counter;
 }
 void sig_handler(int signum) {
@@ -486,7 +490,6 @@ int main (int argc, char **argv){
       //command 
     case 'c': {
       int numArgs = 4; 
-
       int _stdin, _stdout, _stderr;
       char** arg_array = malloc((numArgs+1) * sizeof(char*));
       if (optarg == NULL) {
@@ -494,15 +497,17 @@ int main (int argc, char **argv){
 	errFlag = 1;
 	break;
       }
-      arg_array[0] = optarg;
       char** command_arg = arg_array+3;
+            arg_array[0] = optarg;
+
       //parse args, if correct apply to optind for next options
-      int returnVal = parseArgs(&numArgs,optind,argc,arg_array,argv);
+      int returnVal = parseArgs(&numArgs,optind,argc,&arg_array,argv);
       if (returnVal < 4) {
 	fprintf(stderr,"Not enough arguments for --command, found %d need 4\n",returnVal);
 	errFlag = 1;
 	break;
       }
+
       if (verboseFlag) {
 	printf("--command");
 	for (int i = 0; i < returnVal; i++){

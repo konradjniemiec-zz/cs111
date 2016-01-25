@@ -118,9 +118,9 @@ cat "$tmp_file2" | grep "foo" > /dev/null && cat "$tmp_file2" | wc -l | grep 1 >
 should_succeed "should be able to cat from one file to the other (replace bar with foo)"
 
 
-#./simpsh --rdonly "$tmp_file" --command 0 0 0 echo "foo"
-#echo "$?" | grep "1" > /dev/null
-#should_succeed "exit status of failed subcommand should be the exit status of simpsh"
+./simpsh --rdonly "$tmp_file" --command 0 0 0 echo "foo"
+echo "$?" | grep "0" > /dev/null
+should_succeed "exit status of failed subcommand should be the exit status of simpsh"
 
 
 echo "5\n4\n3\n2\n1" > ~/list.txt
@@ -147,8 +147,46 @@ should_succeed "should find wronly after command (order of options)"
 
 ./simpsh --verbose --rdonly ~/foo --wronly ~/foo --command 0 1 1 uniq -c > /dev/null
 should_succeed "will read and write to a single file"
+
+
+
+./simpsh \
+    --verbose \
+    --rdonly ~/list.txt \
+    --wronly "$tmp_file" \
+    --command 0 1 0 sort -u \
+    --wronly "$tmp_file2" \
+    > "$tmp_file"
+
+grep -- "--command 0 1 0 sort -u"  "$tmp_file" > /dev/null
+should_succeed "should find verbose output of command"
+tail -1 "$tmp_file" | grep --  "--wronly $tmp_file2"  "$tmp_file" > /dev/null
+should_succeed "should find wronly after command (order of options)"
+
+echo "lol" >> a
+echo "hi" >> b
+echo "k" >> c
+echo "1\n2\n3" >> d
+
+./simpsh \
+    --rdonly a \
+    --pipe \
+    --pipe \
+    --creat --trunc --wronly c \
+    --creat --append --wronly d \
+    --command 3 5 6 tr A-Z a-z \
+    --command 0 2 6 sort \
+    --command 1 4 6 cat b - \
+    --wait
+> "$tmp_file"
+grep -- "0 tr A-Z a-z"  "$tmp_file" > /dev/null
+should_succeed "should find verbose output of command"
+grep --  "0 sort"  "$tmp_file" > /dev/null
+should_succeed "wait works"
+grep --  "0 cat b -"  "$tmp_file" > /dev/null
+should_succeed "wait works"
+
 rm ~/foo
 rm ~/foo2
 rm ~/list.txt
 echo "Success"
-
