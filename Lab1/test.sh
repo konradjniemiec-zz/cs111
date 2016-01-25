@@ -35,7 +35,7 @@ tmp_file2=~/foo2
 > "$tmp_file2"
 
 
-./simpsh --rdonly cantpossiblyexist 2>&1 | grep "Error: cantpossiblyexist does not exist" > /dev/null
+./simpsh --rdonly cantpossiblyexist 2>&1 | grep "Error in opening file cantpossiblyexist" > /dev/null
 should_succeed "reports missing file";
 
 
