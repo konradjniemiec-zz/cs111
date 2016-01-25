@@ -14,7 +14,7 @@
 #include <fcntl.h>
 #include <errno.h>
 struct thread_info {
-  char** argv;
+  char* str;
   pid_t pid;
 };
 //////
@@ -34,7 +34,22 @@ int maxPipes;
 int flags = 0;
 //////
 
-
+char * buildStr(char** argv) {
+  int size = strlen(argv[0])+1;
+  char * buf = malloc(size * sizeof(char));
+  strcpy(buf,argv[0]);
+  argv++;
+  while (argv[0] != 0)
+    {
+      if (strlen(buf) + strlen(argv[0])+1 >= size) {
+	size = 2 * (strlen(buf) + strlen(argv[0]) + 1);
+	buf = realloc(buf,size);
+      }
+      strcat(strcat(buf," "),argv[0]);
+      argv++;
+    }
+  return buf;
+}
 
 int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** argv) {
   int counter = 1; //starts at 1 because optarg contains the first required argument
@@ -525,7 +540,7 @@ int main (int argc, char **argv){
       }
       else {
 	threads[numThreads].pid = child_pid;
-	threads[numThreads++].argv = command_arg;
+	threads[numThreads++].str = buildStr(command_arg);
 	checkMem();
       }
       free(arg_array);
@@ -576,9 +591,6 @@ int main (int argc, char **argv){
   for (int k = 0; k < numFds; k++){
     close(fds[k]);
   }
-  free(fds);
-  free(threads);
-  free(pipes);
   if (waitFlag) {
     int exitStatus = 0;
     int status;
@@ -594,16 +606,15 @@ int main (int argc, char **argv){
       int realStatus = WEXITSTATUS(status);
       if (realStatus > exitStatus)
 	exitStatus = realStatus;
-      printf("%d",realStatus);
-      char** word = threads[j].argv;
-      while (word[0] != 0) {
-	printf(" %s",word[0]);
-	word++;
-      }
-      printf("\n");
+
+      printf("%d %s\n",realStatus,threads[j].str);
+      free(threads[j].str);
     }
     errFlag = exitStatus;
   }
+  free(fds);
+  free(threads);
+  free(pipes);
   return errFlag;
 }
 
