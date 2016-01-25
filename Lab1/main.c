@@ -105,6 +105,29 @@ int OpenFile(int c){
     	}
     }
   }
+  switch(c){
+  case 'r':{
+    if (access(optarg, R_OK) == -1) {
+      fprintf(stderr, "Error: Read Permission Denied\n", optarg);
+      return -1;
+    }
+    break;
+  }
+  case 'w': {
+    if (access(optarg, W_OK) == -1) {
+      fprintf(stderr, "Error: Write Permission Denied\n", optarg);
+      return -1;
+    }
+    break;
+  }
+  case '-': {
+    if (access(optarg, R_OK) == -1) {
+      fprintf(stderr, "Error: Read-Write Permission Denied\n", optarg);
+      return -1;
+    }
+    break;
+  }
+  }
     //check existence for errors
     //use a switch on c to create  a string R_OK, W_OK, etc to use in access, calling it s???
     //seemslike a lot of ppl juts use F_OK though
@@ -126,27 +149,42 @@ int OpenFile(int c){
 int isPipe(int fd) {
   int realFd = fds[fd];
   for (int i = 0; i < numPipes; i++) {
-    if (pipes[i] == realFd) return 1;
+    if (pipes[i] == realFd) {
+      fprintf(stderr,"Fd %d is a pipe!",fd);
+      return 1;
+    }
   }
+  fprintf(stderr,"Could not find fd %d, is not pipe\n",fd);
   return 0;
 }
 int checkFD(int fd) {
-  if (fd < 0 || fd > numFds) return 0;
+  if (fd < 0 || fd > numFds) {
+    fprintf(stderr,"fd out of range %d",fd);
+    return 0;
+  }
   return (fcntl(fds[fd], F_GETFD) != -1);
 }
 int closePipeCompanion(int fd) {
-  if (checkFD(fd)) return (close(fds[fd])==0);
+  if (checkFD(fd)) {
+    fprintf(stderr,"Closing fd %d",fd);
+    return (close(fds[fd])==0);
+  }
+  fprintf(stderr,"check FD failed for fd %d \n",fd);
   return 0;
 }
 int checkReadPipe(int fd) {
   if (isPipe(fd) && isPipe(fd+1)) {
     return closePipeCompanion(fd+1);
   }
+  fprintf(stderr,"Both aren't pipes %d %d\n",fd,fd+1);
+  return 0;
 }
 int checkWritePipe(int fd) {
   if (isPipe(fd) && isPipe(fd-1)) {
     return closePipeCompanion(fd-1);
   }
+  fprintf(stderr,"Both aren't pipes %d %d\n",fd,fd-1);
+  return 0;
 }
 
 
@@ -513,7 +551,7 @@ int main (int argc, char **argv){
       if (optarg)
 	{
 	  if (verboseFlag)
-	    printf("--close %s",optarg);
+	    printf("--close %s\n",optarg);
 	  //optarg is our string
 	  int fd;
 	  sscanf(optarg,"%d",&fd);
@@ -542,35 +580,37 @@ int main (int argc, char **argv){
       break;
     }
   }
-  free(fds);
-  free(threads);
+  
   for (int k = 0; k < numFds; k++){
   	close(fds[numFds]);
   }
+  free(fds);
+  free(threads);
+  free(pipes);
   if (waitFlag) {
-        int exitStatus = 0;
-      int status;
-      pid_t pid;
-      while ((pid = waitpid(-1,&status,WUNTRACED)) > 0) {
-	int j;
-	for (int i = 0; i < numThreads; i++) {
-	  if (threads[i].pid==pid) {
-	    j = i;
-	    break;
-	  }
+    int exitStatus = 0;
+    int status;
+    pid_t pid;
+    while ((pid = waitpid(-1,&status,WUNTRACED)) > 0) {
+      int j;
+      for (int i = 0; i < numThreads; i++) {
+	if (threads[i].pid==pid) {
+	  j = i;
+	  break;
 	}
-	int realStatus = WEXITSTATUS(status);
-	if (realStatus > exitStatus)
-	  exitStatus = realStatus;
-	printf("%d",realStatus);
-	char** word = threads[j].argv;
-	while (word[0] != 0) {
-	  printf(" %s",word[0]);
-	  word++;
-	}
-	printf("\n");
       }
-      errFlag = exitStatus;
+      int realStatus = WEXITSTATUS(status);
+      if (realStatus > exitStatus)
+	exitStatus = realStatus;
+      printf("%d",realStatus);
+      char** word = threads[j].argv;
+      while (word[0] != 0) {
+	printf(" %s",word[0]);
+	word++;
+      }
+      printf("\n");
+    }
+    errFlag = exitStatus;
   }
   return errFlag;
 }
