@@ -182,6 +182,7 @@ int checkFD(int fd) {
 }
 int closePipeCompanion(int fd) {
   if (checkFD(fd)) {
+    fprintf(stderr,"Closing companion %d\n",fd);
     return (close(fds[fd])==0);
   }
   return 0;
@@ -529,7 +530,7 @@ int main (int argc, char **argv){
       pid_t child_pid = fork();
       if (child_pid==0) {
 	//ChildProcess
-	checkReadPipe(_stdin);checkWritePipe(_stdout);checkWritePipe(_stderr);
+	fprintf(stderr,"Again %d %d %d\n",checkReadPipe(_stdin),checkWritePipe(_stdout),checkWritePipe(_stderr));
 	dup2(fds[_stdin],0); // actually go into file descriptor array
 	dup2(fds[_stdout],1); // same for these
 	dup2(fds[_stderr],2);
