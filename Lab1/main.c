@@ -55,7 +55,6 @@ int parseArgs(int* expected_arg_num,int i, int argc,char** dest_arg_arr, char** 
   return counter;
 }
 void sig_handler(int signum) {
-  fprintf(stderr,"%d caught\n",signum);
   exit(signum);
 }
 void checkMem(){
@@ -150,40 +149,34 @@ int isPipe(int fd) {
   int realFd = fds[fd];
   for (int i = 0; i < numPipes; i++) {
     if (pipes[i] == realFd) {
-      fprintf(stderr,"Fd %d is a pipe!",fd);
       return 1;
     }
   }
-  fprintf(stderr,"Could not find fd %d, is not pipe\n",fd);
   return 0;
 }
 int checkFD(int fd) {
   if (fd < 0 || fd > numFds) {
-    fprintf(stderr,"fd out of range %d",fd);
+    fprintf(stderr,"fd out of range %d\n",fd);
     return 0;
   }
   return (fcntl(fds[fd], F_GETFD) != -1);
 }
 int closePipeCompanion(int fd) {
   if (checkFD(fd)) {
-    fprintf(stderr,"Closing fd %d",fd);
     return (close(fds[fd])==0);
   }
-  fprintf(stderr,"check FD failed for fd %d \n",fd);
   return 0;
 }
 int checkReadPipe(int fd) {
   if (isPipe(fd) && isPipe(fd+1)) {
     return closePipeCompanion(fd+1);
   }
-  fprintf(stderr,"Both aren't pipes %d %d\n",fd,fd+1);
   return 0;
 }
 int checkWritePipe(int fd) {
   if (isPipe(fd) && isPipe(fd-1)) {
     return closePipeCompanion(fd-1);
   }
-  fprintf(stderr,"Both aren't pipes %d %d\n",fd,fd-1);
   return 0;
 }
 
@@ -516,7 +509,7 @@ int main (int argc, char **argv){
       pid_t child_pid = fork();
       if (child_pid==0) {
 	//ChildProcess
-	fprintf(stderr,"We need to do all three: %d %d %d\n",checkReadPipe(_stdin),checkWritePipe(_stdout),checkWritePipe(_stderr));
+	checkReadPipe(_stdin);checkWritePipe(_stdout);checkWritePipe(_stderr);
 	dup2(fds[_stdin],0); // actually go into file descriptor array
 	dup2(fds[_stdout],1); // same for these
 	dup2(fds[_stderr],2);
@@ -579,10 +572,9 @@ int main (int argc, char **argv){
     case '?':
       break;
     }
-  }
-  
+  }  
   for (int k = 0; k < numFds; k++){
-  	close(fds[numFds]);
+    close(fds[k]);
   }
   free(fds);
   free(threads);
