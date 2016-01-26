@@ -131,7 +131,10 @@ int OpenFile(int c){
       return 0;
     }
     numFds++; 
+    fprintf(stderr,"Opening file with create: %d %d\n",numFds-1,fds[numFds]-1);
     checkMem();
+    
+
     return numFds-1;
   }
   switch(c){
@@ -168,6 +171,7 @@ int OpenFile(int c){
     }
     numFds++; 
     checkMem();
+    fprintf(stderr,"Opening file with without create: %d %d\n",numFds-1,fds[numFds]-1);
     return numFds-1;
 }
 int isPipe(int fd) {
@@ -188,7 +192,7 @@ int checkFD(int fd) {
 }
 int closePipeCompanion(int fd) {
   if (checkFD(fd)) {
-    fprintf(stderr,"Closing companion %d\n",fd);
+    fprintf(stderr,"Closing companion %d %d\n",fd,fds[fd]);
     return (close(fds[fd])==0);
   }
   return 0;
@@ -418,6 +422,7 @@ int main (int argc, char **argv){
       pipes[numPipes]=pipeaddr[1];
       numPipes++;
       numFds++;
+      fprintf(stderr,"Opening pipes Read: %d %d %d and and Write: %d %d %d\n",numFds-2,fds[numFds-2],pipes[numPipes-2],numFds-1,fds[numFds-1],pipes[numPipes-1]);
       checkMem();
       
       break;
@@ -601,6 +606,7 @@ int main (int argc, char **argv){
     }
   }  
   for (int k = 0; k < numFds; k++){
+    fprintf(stderr,"Closing fd: %d %d\n",k,fds[k]);
     close(fds[k]);
   }
   if (waitFlag) {
