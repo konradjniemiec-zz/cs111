@@ -131,7 +131,7 @@ int OpenFile(int c){
       return 0;
     }
     numFds++; 
-    fprintf(stderr,"Opening file with create: %d %d\n",numFds-1,fds[numFds]-1);
+    fprintf(stderr,"Opening file with create: %d %d\n",numFds-1,fds[numFds-1]);
     checkMem();
     
 
@@ -171,7 +171,7 @@ int OpenFile(int c){
     }
     numFds++; 
     checkMem();
-    fprintf(stderr,"Opening file with without create: %d %d\n",numFds-1,fds[numFds]-1);
+    fprintf(stderr,"Opening file with without create: %d %d\n",numFds-1,fds[numFds-1]);
     return numFds-1;
 }
 int isPipe(int fd) {
