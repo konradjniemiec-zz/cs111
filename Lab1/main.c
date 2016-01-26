@@ -339,10 +339,12 @@ int main (int argc, char **argv){
 	{
 	  //optarg is our string
 	  flags |= O_RDWR;
-	  int fd= OpenFile(x);
-	  if ((fd < 0) || !checkFD(fd)){
-	    fprintf(stderr,"Error in opening file %s\n",optarg);
+	  if (flags & O_CREAT != O_CREAT){
+		 int fd= OpenFile(x);
+		  if ((fd < 0) || !checkFD(fd)){
+		    fprintf(stderr,"Error in opening file %s\n",optarg);
 	    errFlag = 1;
+		 }
 	  }
 	  flags = 0;
 	}
