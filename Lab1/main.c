@@ -123,6 +123,17 @@ int OpenFile(int c){
     	}
     }
   }
+  if ((flags & O_CREAT) == O_CREAT) {
+    mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+    fds[numFds] = open(optarg, flags,mode);
+    if (fds[numFds] < 0) {
+      fprintf(stderr,"Error opening : %s\n", optarg);
+      return 0;
+    }
+    numFds++; 
+    checkMem();
+    return numFds-1;
+  }
   switch(c){
   case 'r':{
     if (access(optarg, R_OK) == -1) {
@@ -139,18 +150,13 @@ int OpenFile(int c){
     break;
   }
   case '-': {
-    if (access(optarg, R_OK) == -1) {
+    if (access(optarg, R_OK) == -1 && access(optarg, W_OK) == -1) {
       fprintf(stderr, "Error: Read-Write Permission Denied\n", optarg);
       return -1;
     }
     break;
   }
   }
-    //check existence for errors
-    //use a switch on c to create  a string R_OK, W_OK, etc to use in access, calling it s???
-    //seemslike a lot of ppl juts use F_OK though
-  //if (access(optarg, s) != -1
-  //switch(c){ case'r':
     if (access(optarg, F_OK) == -1) {
       fprintf(stderr, "Error: %s does not exist\n", optarg);
       return 0;
@@ -339,12 +345,10 @@ int main (int argc, char **argv){
 	{
 	  //optarg is our string
 	  flags |= O_RDWR;
-	  if (flags & O_CREAT != O_CREAT){
-		 int fd= OpenFile(x);
-		  if ((fd < 0) || !checkFD(fd)){
-		    fprintf(stderr,"Error in opening file %s\n",optarg);
+	  int fd= OpenFile(x);
+	  if ((fd < 0) || !checkFD(fd)){
+	    fprintf(stderr,"Error in opening file %s\n",optarg);
 	    errFlag = 1;
-		 }
 	  }
 	  flags = 0;
 	}
