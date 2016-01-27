@@ -508,11 +508,12 @@ int main (int argc, char **argv){
 	errFlag = 1;
 	break;
       }
-      char** command_arg = arg_array+3;
-            arg_array[0] = optarg;
+      arg_array[0] = optarg;
 
       //parse args, if correct apply to optind for next options
       int returnVal = parseArgs(&numArgs,optind,argc,&arg_array,argv);
+      char** command_arg = arg_array+3;
+
       if (returnVal < 4) {
 	fprintf(stderr,"Not enough arguments for --command, found %d need 4\n",returnVal);
 	errFlag = 1;
@@ -596,14 +597,10 @@ int main (int argc, char **argv){
 	  //optarg is our string
 	  int fd;
 	  sscanf(optarg,"%d",&fd);
-	  if (checkFD(fd)){
-	    close(fd);
-	  }
-	  else {
+	  if (close(fd) < 0) {
 	    fprintf(stderr,"Error in closing file %s\n",optarg);
 	    errFlag = 1;
 	  }
-
 	}
       else {
 	fprintf(stderr,"No arguments provided for --close\n");
