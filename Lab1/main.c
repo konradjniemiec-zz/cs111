@@ -543,8 +543,11 @@ int main (int argc, char **argv){
 	//ChildProcess
 	fprintf(stderr,"Again %d %d %d\n",checkReadPipe(_stdin),checkWritePipe(_stdout),checkWritePipe(_stderr));
 	dup2(fds[_stdin],0); // actually go into file descriptor array
+	fprintf(stderr,"Duplicating %d %d into %d\n",_stdin,fds[_stdin],0);
 	dup2(fds[_stdout],1); // same for these
+		fprintf(stderr,"Duplicating %d %d into %d",_stdout,fds[_stdout],1);
 	dup2(fds[_stderr],2);
+		fprintf(stderr,"Duplicating %d %d into %d",_stderr,fds[_stderr],2);
 	execvp(file,command_arg);
 	//print error if this comes back
 	fprintf(stderr,"ERROR in command: %s\n",file);
