@@ -10,3 +10,6 @@ Additionally, we weren't anal about checking the incoming files Read and Write p
 
 Aside from these issues, however, we feel we have a robust program. We implemented the specified behaviours and have numerous error check methods, including for our memory allocation and file accesses. We also pay close attention to allocatex memory to make sure we do not fail to free used resources.
 
+###Lab 1B
+
+The 1B portion of the lab has been completed. There are no known issues or errors. We were stuck for multiple days on a single error where the program would hang after a command was given. Eventually we found on piazza a TA's suggestion to close file descriptors after calling dup2, and this fixed the error. Test cases were added to test the new functions, all of which produce the expected result.
