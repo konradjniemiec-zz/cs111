@@ -131,10 +131,9 @@ int OpenFile(int c){
       return 0;
     }
     numFds++; 
-    fprintf(stderr,"Opening file with create: %d %d\n",numFds-1,fds[numFds-1]);
+    //    fprintf(stderr,"Opening file with create: %d %d\n",numFds-1,fds[numFds-1]);
     checkMem();
     
-
     return numFds-1;
   }
   switch(c){
@@ -171,7 +170,7 @@ int OpenFile(int c){
     }
     numFds++; 
     checkMem();
-    fprintf(stderr,"Opening file with without create: %d %d\n",numFds-1,fds[numFds-1]);
+    //    fprintf(stderr,"Opening file with without create: %d %d\n",numFds-1,fds[numFds-1]);
     return numFds-1;
 }
 int isPipe(int fd) {
@@ -192,7 +191,7 @@ int checkFD(int fd) {
 }
 int closePipeCompanion(int fd) {
   if (checkFD(fd)) {
-    fprintf(stderr,"Closing companion %d %d\n",fd,fds[fd]);
+    //    fprintf(stderr,"Closing companion %d %d\n",fd,fds[fd]);
     return (close(fds[fd])==0);
   }
   return 0;
@@ -422,7 +421,7 @@ int main (int argc, char **argv){
       pipes[numPipes]=pipeaddr[1];
       numPipes++;
       numFds++;
-      fprintf(stderr,"Opening pipes Read: %d %d %d and and Write: %d %d %d\n",numFds-2,fds[numFds-2],pipes[numPipes-2],numFds-1,fds[numFds-1],pipes[numPipes-1]);
+      //      fprintf(stderr,"Opening pipes Read: %d %d %d and and Write: %d %d %d\n",numFds-2,fds[numFds-2],pipes[numPipes-2],numFds-1,fds[numFds-1],pipes[numPipes-1]);
       checkMem();
       
       break;
@@ -541,13 +540,27 @@ int main (int argc, char **argv){
       pid_t child_pid = fork();
       if (child_pid==0) {
 	//ChildProcess
-	fprintf(stderr,"Again %d %d %d\n",checkReadPipe(_stdin),checkWritePipe(_stdout),checkWritePipe(_stderr));
-	dup2(fds[_stdin],0); // actually go into file descriptor array
-	fprintf(stderr,"Duplicating %d %d into %d\n",_stdin,fds[_stdin],0);
-	dup2(fds[_stdout],1); // same for these
-		fprintf(stderr,"Duplicating %d %d into %d",_stdout,fds[_stdout],1);
-	dup2(fds[_stderr],2);
-		fprintf(stderr,"Duplicating %d %d into %d",_stderr,fds[_stderr],2);
+	//	fprintf(stderr,"Again %d %d %d\n")
+	checkReadPipe(_stdin);
+	checkWritePipe(_stdout);
+	checkWritePipe(_stderr);
+	if (dup2(fds[_stdin],0) < 0) { // actually go into file descriptor array
+	  fprintf(stderr,"Error in duplicating FD\n");
+	}
+	//	fprintf(stderr,"Duplicating %d %d into %d\n",_stdin,fds[_stdin],0);
+	
+	if (dup2(fds[_stdout],1) < 0) { // same for these
+	  fprintf(stderr,"Error in duplicaing FD\n");
+	}
+	//	fprintf(stderr,"Duplicating %d %d into %d",_stdout,fds[_stdout],1);
+	if (dup2(fds[_stderr],2) < 0) {
+	  fprintf(stderr,"Error in duplicating FD\n");
+	}
+	for (int k = 0; k < numFds; k++){
+	  close(fds[k]);
+	}
+	
+	//	fprintf(stderr,"Duplicating %d %d into %d",_stderr,fds[_stderr],2);
 	execvp(file,command_arg);
 	//print error if this comes back
 	fprintf(stderr,"ERROR in command: %s\n",file);
@@ -609,7 +622,7 @@ int main (int argc, char **argv){
     }
   }  
   for (int k = 0; k < numFds; k++){
-    fprintf(stderr,"Closing fd: %d %d\n",k,fds[k]);
+    //    fprintf(stderr,"Closing fd: %d %d\n",k,fds[k]);
     close(fds[k]);
   }
   if (waitFlag) {

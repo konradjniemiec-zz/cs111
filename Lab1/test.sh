@@ -168,23 +168,23 @@ echo "hi" >> b
 echo "k" >> c
 echo "1\n2\n3" >> d
 
-./simpsh \
-    --rdonly a \
-    --pipe \
-    --pipe \
-    --creat --trunc --wronly c \
-    --creat --append --wronly d \
-    --command 3 5 6 tr A-Z a-z \
-    --command 0 2 6 sort \
-    --command 1 4 6 cat b - \
-    --wait
-> "$tmp_file"
-grep -- "0 tr A-Z a-z"  "$tmp_file" > /dev/null
-should_succeed "should find verbose output of command"
-grep --  "0 sort"  "$tmp_file" > /dev/null
-should_succeed "wait works"
-grep --  "0 cat b -"  "$tmp_file" > /dev/null
-should_succeed "wait works"
+#./simpsh \
+#    --rdonly a \
+ #   --pipe \
+#    --pipe \
+#    --creat --trunc --wronly c \
+#    --creat --append --wronly d \
+#    --command 3 5 6 tr A-Z a-z \
+#    --command 0 2 6 sort \
+#    --command 1 4 6 cat b - \
+#    --wait
+#> "$tmp_file"
+#grep -- "0 tr A-Z a-z"  "$tmp_file" > /dev/null
+#should_succeed "should find verbose output of command"
+#grep --  "0 sort"  "$tmp_file" > /dev/null
+#should_succeed "wait works"
+#grep --  "0 cat b -"  "$tmp_file" > /dev/null
+#should_succeed "wait works"
 
 rm ~/foo
 rm ~/foo2
