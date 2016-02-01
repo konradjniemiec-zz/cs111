@@ -11,6 +11,8 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/signal.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include <fcntl.h>
 #include <errno.h>
 struct thread_info {
@@ -20,6 +22,7 @@ struct thread_info {
 //////
 /// dont wanna use static, ruins thread safety
 int verboseFlag;
+int profileFlag;
 int errFlag;
 int waitFlag;
 int numPipes;
@@ -33,6 +36,15 @@ int maxThreads;
 int maxPipes;
 int flags = 0;
 //////
+
+void printUsage(int who) {
+  struct rusage sys_usage;
+  if (getrusage(who,&sys_usage)==-1) {
+    fprintf(stderr,"Error in retreiving system usage\n");
+    return;
+  }
+  printf("~~SYSTEM PROFILE~~ User time: %d CPU time: %d Num Page Reclaims: %ld Num Page Faults: %ld Block Input I/Os: %ld Block Output I/Os: %ld Voluntary Context Swithces: %ld Involuntary Context Switches: %ld\n",sys_usage.ru_utime.tv_sec,sys_usage.ru_stime.tv_sec,sys_usage.ru_minflt,sys_usage.ru_majflt,sys_usage.ru_inblock,sys_usage.ru_oublock,sys_usage.ru_nvcsw,sys_usage.ru_nivcsw);
+}
 
 char * buildStr(char** argv) {
   int size = strlen(argv[0])+1;
@@ -133,7 +145,9 @@ int OpenFile(int c){
     numFds++; 
     //    fprintf(stderr,"Opening file with create: %d %d\n",numFds-1,fds[numFds-1]);
     checkMem();
-    
+    if (profileFlag)
+      printUsage(RUSAGE_SELF);
+      
     return numFds-1;
   }
   switch(c){
@@ -171,6 +185,8 @@ int OpenFile(int c){
     numFds++; 
     checkMem();
     //    fprintf(stderr,"Opening file with without create: %d %d\n",numFds-1,fds[numFds-1]);
+    if (profileFlag)
+      printUsage(RUSAGE_SELF);
     return numFds-1;
 }
 int isPipe(int fd) {
@@ -241,6 +257,7 @@ int main (int argc, char **argv){
 	{"ignore",required_argument,NULL,'i'},
 	{"default",required_argument,NULL,'d'},
 	{"pause",no_argument,NULL,'u'},
+	{"profile",no_argument,NULL,'e'},
 	/**/
         {"append",no_argument, 0, 'A'},
         {"cloexec",no_argument, 0, 'B'},
@@ -342,6 +359,11 @@ int main (int argc, char **argv){
       verboseFlag=1;
       break;
     }
+      //profile option
+    case 'e': {
+      profileFlag = 1;
+      break;
+    }
       //rdwr option
     case '-': {
       if (optarg)
@@ -421,6 +443,8 @@ int main (int argc, char **argv){
       pipes[numPipes]=pipeaddr[1];
       numPipes++;
       numFds++;
+      if (profileFlag)
+	printUsage(RUSAGE_SELF);
       //      fprintf(stderr,"Opening pipes Read: %d %d %d and and Write: %d %d %d\n",numFds-2,fds[numFds-2],pipes[numPipes-2],numFds-1,fds[numFds-1],pipes[numPipes-1]);
       checkMem();
       
@@ -439,8 +463,12 @@ int main (int argc, char **argv){
 	  action.sa_handler = sig_handler;
 	  sigfillset(&action.sa_mask);
 	  action.sa_flags = 0;
-	  if (sigaction(signum,&action,NULL) == -1)
+	  if (sigaction(signum,&action,NULL) == -1) {
 	    fprintf(stderr,"Error when creating handler for signal %s\n",optarg);
+	    break;
+	  }
+	  if (profileFlag)
+	    printUsage(RUSAGE_SELF);
 	}
       else 
 	{
@@ -460,8 +488,11 @@ int main (int argc, char **argv){
 	  def.sa_handler = SIG_DFL;
 	  sigemptyset(&def.sa_mask);
 	  def.sa_flags = 0;
-	  if (sigaction(signum,&def,NULL) < 0)
+	  if (sigaction(signum,&def,NULL) < 0) {
 	    fprintf(stderr,"Error when creating default handler\n");
+	  }
+	  if (profileFlag)
+	    printUsage(RUSAGE_SELF);
 	}
       else 
 	{
@@ -496,6 +527,8 @@ int main (int argc, char **argv){
       if (verboseFlag)
 	printf("--pause\n");
       pause();
+      if (profileFlag)
+	printUsage(RUSAGE_SELF);
       break;
     }
       //command 
@@ -576,6 +609,8 @@ int main (int argc, char **argv){
 	threads[numThreads].pid = child_pid;
 	threads[numThreads++].str = buildStr(command_arg);
 	checkMem();
+	if (profileFlag)
+	  printUsage(RUSAGE_SELF);
       }
       free(arg_array);
       break;
@@ -597,10 +632,15 @@ int main (int argc, char **argv){
 	  //optarg is our string
 	  int fd;
 	  sscanf(optarg,"%d",&fd);
-	  if (close(fd) < 0) {
+	  fflush(stdout);
+	  fflush(stderr);
+	  if (close(fds[fd]) < 0) {
 	    fprintf(stderr,"Error in closing file %s\n",optarg);
 	    errFlag = 1;
+	    break;
 	  }
+	  if (profileFlag)
+	    printUsage(RUSAGE_SELF);
 	}
       else {
 	fprintf(stderr,"No arguments provided for --close\n");
@@ -643,9 +683,15 @@ int main (int argc, char **argv){
     }
     errFlag = exitStatus;
   }
+  if (profileFlag) {
+      printUsage(RUSAGE_SELF);
+      printf("Child Usage:\n");
+      printUsage(RUSAGE_CHILDREN);
+  }
   free(fds);
   free(threads);
   free(pipes);
+  
   return errFlag;
 }
 

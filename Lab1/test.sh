@@ -113,10 +113,6 @@ cat "$tmp_file2" | grep "bar" > /dev/null
 should_succeed "the temporary file 2 should have 'bar'"
 
 # cat of ~/foo should end up in the ~/file2
-./simpsh --rdonly "$tmp_file" --wronly "$tmp_file2" --command 0 1 0 cat "$tmp_file"
-cat "$tmp_file2" | grep "foo" > /dev/null && cat "$tmp_file2" | wc -l | grep 1 > /dev/null
-should_succeed "should be able to cat from one file to the other (replace bar with foo)"
-
 
 ./simpsh --rdonly "$tmp_file" --command 0 0 0 echo "foo"
 echo "$?" | grep "0" > /dev/null
@@ -198,3 +194,4 @@ rm ~/foo
 rm ~/foo2
 rm ~/list.txt
 echo "Success"
+
