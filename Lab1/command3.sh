@@ -11,5 +11,7 @@ time ./simpsh --rdonly b --pipe --pipe --pipe --creat --wronly temp --command 0 
 
 printf "Exceline Results:\n"
 
+time ./command3_exec.sh
+
 rm b
 rm temp

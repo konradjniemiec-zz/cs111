@@ -10,4 +10,7 @@ time ./simpsh --rdwr aasdf --pipe --pipe --pipe --trunc --wronly out --command 0
 
 printf "Exceline Results:\n"
 
+time ./command1_exec.sh
+
+rm out 
 rm aasdf
