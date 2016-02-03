@@ -1,6 +1,6 @@
 #!/usr/local/cs/bin/bash
 
-head -c 100000 > b
+head -c 100000 /dev/urandom > b
 
 printf "Bash Results:\n"
 cat b | tr ' ' '\n' | sort | grep "abc"
