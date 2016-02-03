@@ -13,3 +13,8 @@ Aside from these issues, however, we feel we have a robust program. We implement
 ###Lab 1B
 
 The 1B portion of the lab has been completed. There are no known issues or errors. We were stuck for multiple days on a single error where the program would hang after a command was given. Eventually we found on piazza a TA's suggestion to close file descriptors after calling dup2, and this fixed the error. Test cases were added to test the new functions, all of which produce the expected result.
+
+
+###Lab 1C
+
+The 1C portion of the lab has been completed. The --profile option was implemented sucessfully with no apparent issues. additionally, we created 3 test cases to run in bash, simpsh, and exceline to compare the relative effectivenesses, as detialed in the report.pdf file.
