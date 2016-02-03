@@ -29,7 +29,8 @@ time ./simpsh --rdonly a --rdwr asdf --rdwr afsd --pipe --pipe --pipe --pipe --p
 
 printf "Exceline Results:\n"
 
-
+time ./command2_exec.sh
 rm a
 rm afsd
 rm asdf
+rm o
