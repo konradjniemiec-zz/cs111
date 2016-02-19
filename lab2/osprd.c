@@ -13,7 +13,7 @@
 #include <linux/blkdev.h>
 #include <linux/wait.h>
 #include <linux/file.h>
-
+#include <linux/list.h>
 #include "spinlock.h"
 #include "osprd.h"
 
@@ -45,6 +45,98 @@ static int nsectors = 32;
 module_param(nsectors, int, 0);
 
 
+<<<<<<< HEAD
+typedef struct os_list_entry {
+  pid_t  pid;
+  struct list_head list;
+} os_list_entry;
+typedef struct ticket_entry {
+  unsigned ticket_num;
+  struct list_head list;
+} ticket_entry;
+
+unsigned return_valid_ticket(ticket_entry * list, unsigned ticket) {
+  if (list==NULL) {
+    return ticket;
+  }
+  if (list->ticket_num == ticket) {
+    return return_valid_ticket(list,ticket+1);
+  }
+    
+  struct list_head *ptr;
+  ticket_entry * entry;
+  list_for_each(ptr,&list->list) {
+    entry = list_entry(ptr,ticket_entry,list);
+    if (entry->ticket_num == ticket) {
+      return return_valid_ticket(list,ticket+1);
+    }
+  }
+  return ticket;
+}
+
+ticket_entry * add_to_ticket_list(ticket_entry * list, unsigned ticket){
+  ticket_entry * entry = kzalloc(sizeof(ticket_entry),GFP_ATOMIC);
+  entry->ticket_num = ticket;
+  INIT_LIST_HEAD(&(entry->list));
+  if (list == NULL) {
+    return (list = entry);
+  }
+  else {
+    list_add(&(entry->list),&(list->list));
+  }
+  return list;
+}
+
+os_list_entry *  add_to_list(os_list_entry * list, pid_t pid) {
+  os_list_entry * entry = kzalloc(sizeof(os_list_entry),GFP_ATOMIC);
+  entry->pid = pid;
+  INIT_LIST_HEAD(&(entry->list));
+  if (list == NULL) {
+    return list = entry;
+  }
+  else {
+    list_add(&(entry->list),&(list->list));
+  }
+  return list;
+}
+
+os_list_entry* remove_from_list( os_list_entry * list, pid_t pid) {
+  struct list_head *ptr;
+  os_list_entry * entry;
+  //TODO HEAD WHEN LAST
+  if (list == NULL) return NULL;
+  if (list->pid == pid) {
+    if ((list->list.next) == (&(list->list))) {
+      kfree(list);
+      return NULL;
+    }
+    entry = list_entry(list->list.next,os_list_entry,list);
+    list_del(&list->list);
+    kfree(list);
+    return entry;
+  }
+  list_for_each(ptr,&list->list) {
+    entry = list_entry(ptr,os_list_entry,list);
+    if (entry->pid == pid) {
+      list_del(&entry->list);
+      kfree(entry);
+      return list;
+    }
+  }
+  return list;
+}
+int list_contains( os_list_entry * list, pid_t pid) {
+  if (list == NULL) return 0;
+  struct list_head *ptr;
+  os_list_entry * entry;
+  list_for_each(ptr, &list->list) {
+    entry = list_entry(ptr, os_list_entry, list);
+    if (entry->pid == pid) {
+      return 1;
+    }
+  }
+  return 0;
+}
 /* The internal representation of our device. */
 typedef struct osprd_info {
 	uint8_t *data;                  // The data array. Its size is
@@ -60,7 +152,12 @@ typedef struct osprd_info {
 					// the device lock
 
 	wait_queue_head_t blockq;       // Wait queue for tasks blocked on
-					// the device lock
+  unsigned read_lock;
+  unsigned write_lock;
+  ticket_entry * invalid_tickets;
+  os_list_entry * read_pids;
+  pid_t  write_pid;
+  // the device lock
 
 	/* HINT: You may want to add additional fields to help
 	         in detecting deadlock. */
@@ -111,6 +208,15 @@ static void osprd_process_request(osprd_info_t *d, struct request *req)
 		end_request(req, 0);
 		return;
 	}
+	uint8_t *data_ptr = d->data + req->sector * SECTOR_SIZE;
+	switch (rq_data_dir(req)) {
+	case READ:{
+	  memcpy((void *) req->buffer, (void *)data_ptr, req->current_nr_sectors * SECTOR_SIZE);
+	}
+	case WRITE:{
+	  memcpy((void *) data_ptr, (void *)req->buffer,req->current_nr_sectors * SECTOR_SIZE);
+	}
+	}
 
 	// EXERCISE: Perform the read or write request by copying data between
 	// our data array and the request's buffer.
@@ -119,10 +225,6 @@ static void osprd_process_request(osprd_info_t *d, struct request *req)
 	// Read about 'struct request' in <linux/blkdev.h>.
 	// Consider the 'req->sector', 'req->current_nr_sectors', and
 	// 'req->buffer' members, and the rq_data_dir() function.
-
-	// Your code here.
-	eprintk("Should process request...\n");
-
 	end_request(req, 1);
 }
 
@@ -144,20 +246,35 @@ static int osprd_open(struct inode *inode, struct file *filp)
 static int osprd_close_last(struct inode *inode, struct file *filp)
 {
 	if (filp) {
-		osprd_info_t *d = file2osprd(filp);
-		int filp_writable = filp->f_mode & FMODE_WRITE;
-
-		// EXERCISE: If the user closes a ramdisk file that holds
-		// a lock, release the lock.  Also wake up blocked processes
-		// as appropriate.
-
-		// Your code here.
-
-		// This line avoids compiler warnings; you may remove it.
-		(void) filp_writable, (void) d;
-
+	  osprd_info_t *d = file2osprd(filp);
+	  int filp_writable = filp->f_mode & FMODE_WRITE;
+	  if (((filp->f_flags) & F_OSPRD_LOCKED) == F_OSPRD_LOCKED)
+	    {
+	      pid_t pid = current->pid;
+	      osp_spin_lock(&d->mutex);
+	      (filp->f_flags) &= (~F_OSPRD_LOCKED);
+	      if (filp_writable) {
+		d->write_lock--;
+		d->write_pid = -1;
+	      }
+	      else {
+		d->read_lock--;
+		d->read_pids = remove_from_list(d->read_pids,pid);
+	      }
+	      
+	      osp_spin_unlock(&d->mutex);
+	      wake_up_all(&d->blockq);
+	    }
+	  // EXERCISE: If the user closes a ramdisk file that holds
+	  // a lock, release the lock.  Also wake up blocked processes
+	  // as appropriate.
+	  
+	  // Your code here.
+	  
+	  // This line avoids compiler warnings; you may remove it.
+	  (void) filp_writable, (void) d;
+	  
 	}
-
 	return 0;
 }
 
@@ -222,9 +339,69 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// be protected by a spinlock; which ones?)
 
 		// Your code here (instead of the next two lines).
-		eprintk("Attempting to acquire\n");
-		r = -ENOTTY;
-
+	  unsigned local_ticket;
+	  pid_t pid =current->pid;
+	  osp_spin_lock(&d->mutex);
+	  local_ticket = d->ticket_head;
+	  d->ticket_head++;
+	  osp_spin_unlock(&d->mutex);
+	  if (filp_writable) {
+	    osp_spin_lock(&d->mutex);
+	    if (d->write_pid == pid || list_contains(d->read_pids,pid)){osp_spin_unlock(&d->mutex); d->ticket_tail = return_valid_ticket(d->invalid_tickets,d->ticket_tail+1);return -EDEADLK;}
+	    osp_spin_unlock(&d->mutex);
+	    if (wait_event_interruptible(d->blockq, (d->read_lock==0) && (d->write_lock==0) && (d->ticket_tail == local_ticket)) == -ERESTARTSYS) {
+	      osp_spin_lock(&d->mutex);
+	      if (d->ticket_tail == local_ticket) {
+		d->ticket_tail = return_valid_ticket(d->invalid_tickets,d->ticket_tail+1);
+	      }
+	      else {
+		d->invalid_tickets = add_to_ticket_list(d->invalid_tickets,local_ticket);
+	      }
+	      osp_spin_unlock(&d->mutex);
+	      r = -ERESTARTSYS;
+	    }
+	    else {
+	      //get lock
+	      osp_spin_lock(&d->mutex);
+	      //check for deadlock
+	      filp->f_flags |= F_OSPRD_LOCKED;
+	      d->write_lock++;
+	      d->write_pid = pid;
+	      d->ticket_tail = return_valid_ticket(d->invalid_tickets,d->ticket_tail+1);
+	      osp_spin_unlock(&d->mutex);
+	    }
+	  }
+	  else {
+	    osp_spin_lock(&d->mutex);
+	    if (d->write_pid == pid) {
+	      osp_spin_unlock(&d->mutex);
+	      d->ticket_tail = return_valid_ticket(d->invalid_tickets,d->ticket_tail+1);
+	      return -EDEADLK;
+	    }
+	    osp_spin_unlock(&d->mutex);
+if (wait_event_interruptible(d->blockq,(d->write_lock==0) && (d->ticket_tail == local_ticket)) == -ERESTARTSYS) {
+	      osp_spin_lock(&d->mutex);
+	      if (d->ticket_tail == local_ticket) {
+		d->ticket_tail = return_valid_ticket(d->invalid_tickets,local_ticket+1);
+	      }
+	      else {
+		d->invalid_tickets = add_to_ticket_list(d->invalid_tickets,local_ticket);
+	      }
+	      osp_spin_unlock(&d->mutex);
+	      r = -ERESTARTSYS;
+	    }
+	    else {
+	      //get lock
+	      osp_spin_lock(&d->mutex);
+	      //check for deadlock
+	      filp->f_flags |= F_OSPRD_LOCKED;
+	      d->read_lock++;
+	      d->ticket_tail = return_valid_ticket(d->invalid_tickets,d->ticket_tail+1);
+	      d->read_pids = add_to_list(d->read_pids,pid);
+	      osp_spin_unlock(&d->mutex);
+	    }
+	  }
+	
 	} else if (cmd == OSPRDIOCTRYACQUIRE) {
 
 		// EXERCISE: ATTEMPT to lock the ramdisk.
@@ -235,11 +412,35 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// Otherwise, if we can grant the lock request, return 0.
 
 		// Your code here (instead of the next two lines).
-		eprintk("Attempting to try acquire\n");
-		r = -ENOTTY;
+	  pid_t pid = current->pid;
+	  if (filp_writable) {
+	    osp_spin_lock(&d->mutex);
+	    
+	    if ((d->read_lock==0) && (d->write_lock==0) && (d->ticket_tail == d->ticket_head)) {
+	      filp->f_flags |= F_OSPRD_LOCKED;
+	      d->write_lock++;
+	      d->write_pid = pid;
+	    }
+	    else {
+	      r = -EBUSY;
+	    }
+	    osp_spin_unlock(&d->mutex);
+	  }
+	  else {
 
-	} else if (cmd == OSPRDIOCRELEASE) {
-
+	    osp_spin_lock(&d->mutex);
+	    if ((d->write_lock==0) && (d->ticket_tail == d->ticket_head)) {
+	      filp->f_flags |= F_OSPRD_LOCKED;
+	      d->read_lock++;
+	      add_to_list(d->read_pids,pid);
+	    }
+	    else {
+	      r = -EBUSY;
+	    }
+	    osp_spin_unlock(&d->mutex);
+	  }
+       	} else if (cmd == OSPRDIOCRELEASE) {
+	  
 		// EXERCISE: Unlock the ramdisk.
 		//
 		// If the file hasn't locked the ramdisk, return -EINVAL.
@@ -248,8 +449,21 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// you need, and return 0.
 
 		// Your code here (instead of the next line).
-		r = -ENOTTY;
-
+	  if ((filp->f_flags & (F_OSPRD_LOCKED)) == 0)
+	    return -EINVAL;
+	  pid_t pid = current->pid;
+	  osp_spin_lock(&d->mutex);
+	  filp->f_flags &= (~F_OSPRD_LOCKED);
+	  if (filp_writable) {
+	    d->write_lock--;
+	    d->write_pid = -1;
+	  }
+	  else {
+	    d->read_lock--;
+	    d->read_pids = remove_from_list(d->read_pids,pid);
+	  }
+	  osp_spin_unlock(&d->mutex);
+	  wake_up_all(&d->blockq);
 	} else
 		r = -ENOTTY; /* unknown command */
 	return r;
@@ -263,7 +477,9 @@ static void osprd_setup(osprd_info_t *d)
 	/* Initialize the wait queue. */
 	init_waitqueue_head(&d->blockq);
 	osp_spin_lock_init(&d->mutex);
-	d->ticket_head = d->ticket_tail = 0;
+	d->ticket_head = d->ticket_tail = d->write_lock = d->read_lock =  0;
+	d->read_pids = d->invalid_tickets = NULL;
+	d->write_pid = -1;
 	/* Add code here if you add fields to osprd_info_t. */
 }
 
