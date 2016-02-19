@@ -45,6 +45,7 @@ static int nsectors = 32;
 module_param(nsectors, int, 0);
 
 
+<<<<<<< HEAD
 typedef struct os_list_entry {
   pid_t  pid;
   struct list_head list;
@@ -216,6 +217,14 @@ static void osprd_process_request(osprd_info_t *d, struct request *req)
 	  memcpy((void *) data_ptr, (void *)req->buffer,req->current_nr_sectors * SECTOR_SIZE);
 	}
 	}
+
+	// EXERCISE: Perform the read or write request by copying data between
+	// our data array and the request's buffer.
+	// Hint: The 'struct request' argument tells you what kind of request
+	// this is, and which sectors are being read or written.
+	// Read about 'struct request' in <linux/blkdev.h>.
+	// Consider the 'req->sector', 'req->current_nr_sectors', and
+	// 'req->buffer' members, and the rq_data_dir() function.
 	end_request(req, 1);
 }
 
@@ -266,7 +275,6 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 	  (void) filp_writable, (void) d;
 	  
 	}
-	
 	return 0;
 }
 
