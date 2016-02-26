@@ -11,16 +11,14 @@
 # information you'd like us to know, please add it at the end of the file.
 
 # Partner 1
-Name: 
-Student ID: 
-Email: 
+Name:  Konrad Niemiec
+Student ID:  804423978
+Email: konradjniemiec@gmail.com
 
-# Partner 2 (if you're working in a team)
-Name: 
-Student ID: 
-Email: 
 
 # Extra credit problems
 #Extra credit problem: none
 
 # Add any other information you'd like us to know below this line.
+
+So symbolic links act interestingly, if you for example execute ln -s "test/hello.txt" "test/soft", soft points to "test/hello.txt" instead of hello.txt in its home directory. Checking with TA if that is alright.
