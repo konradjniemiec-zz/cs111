@@ -33,7 +33,32 @@ sys_yield(void)
 		     : : "i" (INT_SYS_YIELD)
 		     : "cc", "memory");
 }
+static inline void
+lock_aquire(void)
+{
+  //Call the lock system call. Could change state to "BLOCKED"
+	asm volatile("int %0\n"
+		     : : "i" (INT_SYS_LOCK)
+		     : "cc", "memory");
+}
+static inline void
+lock_release(void)
+{
+  //Call the unlock system call
+	asm volatile("int %0\n"
+		     : : "i" (INT_SYS_UNLOCK)
+		     : "cc", "memory");
+}
 
+static inline void
+print_char(int character) {
+  //call print_char system call
+  asm volatile("int %0\n"
+		     : : "i" (INT_SYS_PRINT_CHAR),
+		         "a" (character)
+		     : "cc", "memory");
+
+}
 
 /*****************************************************************************
  * sys_exit(status)
@@ -70,7 +95,18 @@ sys_exit(int status)
  *   IF YOU IMPLEMENT EXERCISE 4.A, NAME YOUR SYSTEM CALL sys_priority .
  *
  *****************************************************************************/
-
+static inline void
+sys_priority(int priority)
+{
+	// Here, the status is loaded into register %eax.
+	// You can load other registers with similar syntax; specifically:
+	//	"a" = %eax, "b" = %ebx, "c" = %ecx, "d" = %edx,
+	//	"S" = %esi, "D" = %edi.
+	asm volatile("int %0\n"
+		     : : "i" (INT_SYS_PRIORITY),
+		         "a" (priority)
+		     : "cc", "memory");
+ }
 
 /*****************************************************************************
  * sys_share(???)

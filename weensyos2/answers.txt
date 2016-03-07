@@ -1,5 +1,5 @@
-Name:
-UCLA ID:
+Name: Konrad Niemiec
+UCLA ID: 804423978
 
 Collaborators:
 
@@ -9,32 +9,42 @@ Response to Exercise 1:
 
 The name of the scheduling algorithm is:
 
+We use cooperative scheduling, with a round robin way of determining the next process to run.
 
 (Exercise 2 is a coding exercise)
 
 
 Response to Exercise 3:
 
-Average turnaround time for scheduling_algorithm 0:
-Average turnaround time for scheduling_algorithm 1:
+Average turnaround time for scheduling_algorithm 0: 1278.5ms
+(320*4 - 3 +  320*4-2 + 320*4 - 1 +  320*4) / 4 = 1280 - 1.5 = 1278.5
 
-Average wait time for scheduling_algorithm 0:
-Average wait time for scheduling_algorithm 1:
+Average turnaround time for scheduling_algorithm 1: 800ms
+(320 + 2 * 320 + 3 * 320 + 4 * 320) / 4 = 800
+
+
+Average wait time for scheduling_algorithm 0: 1.5ms
+(0 + 1 + 2 + 3) / 4 = 1.5
+
+Average wait time for scheduling_algorithm 1: 480ms
+(0 + 320 + 2 * 320 + 3 * 320)/4
+
 
 
 Exercise 4:
 
 Did you complete Exercise 4A, Exercise 4B, or both for extra credit?
-
+BOTH
 
 Exercise 5:
-
+19th character is a 3 and 20th character is a 1, thus the clock interrupt happened during the execution of schedos-4
 
 (Exercise 6 is a coding exercise)
 
 
 Anything else you'd like us to know:
-
+For Exercise 6 I implemented system calls lock_aquire() and lock_release() which block the processes. 
 
 
 Extra credit exercises:
+Exercise 8: I implemented a system call print_char which atomically prints a character in the kernel code.

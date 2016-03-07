@@ -19,15 +19,10 @@
 #endif
 
 // UNCOMMENT THE NEXT LINE TO USE EXERCISE 8 CODE INSTEAD OF EXERCISE 6
-// #define __EXERCISE_8__
+//#define __EXERCISE_8__
 // Use the following structure to choose between them:
-// #infdef __EXERCISE_8__
+#ifndef __EXERCISE_8__
 // (exercise 6 code)
-// #else
-// (exercise 8 code)
-// #endif
-
-
 void
 start(void)
 {
@@ -35,11 +30,24 @@ start(void)
 
 	for (i = 0; i < RUNCOUNT; i++) {
 		// Write characters to the console, yielding after each one.
+	  	lock_aquire();
 		*cursorpos++ = PRINTCHAR;
+		lock_release();
 		sys_yield();
 	}
-
-	// Yield forever.
-	while (1)
-		sys_yield();
+	sys_exit(0);
 }
+
+#else
+// (exercise 8 code)
+void
+start(void)
+{
+	int i;
+
+	for (i = 0; i < RUNCOUNT; i++) {
+	  print_char(PRINTCHAR); // this schedules, so no need to yeild
+	}
+	sys_exit(0);
+}
+ #endif

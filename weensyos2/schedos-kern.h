@@ -25,16 +25,22 @@ typedef struct process {
 	pid_t p_pid;			// Process ID
 
 	registers_t p_registers;	// Current process state: registers,
-					// stack location, EIP, etc.
-					// 'registers_t' defined in x86.h
+  
+  // stack location, EIP, etc.
+  // 'registers_t' defined in x86.h
 
+  int p_share;
+  int p_runs;
+
+  int p_priority;
 	procstate_t p_state;		// Process state; see above
-	int p_exit_status;		// Process's exit status
+	int p_exit_status;
+  // Process's exit status
 } process_t;
 
 
 // Clock frequency: the clock interrupt, if any, happens HZ times a second
-#define HZ			100
+#define HZ			3000
 
 // The interrupt number corresponding to the first hardware interrupt
 #define INT_HARDWARE		32

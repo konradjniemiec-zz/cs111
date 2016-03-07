@@ -46,6 +46,8 @@ static process_t proc_array[NPROCS];
 // This is kept up to date by the run() function, in mpos-x86.c.
 process_t *current;
 
+static int lock = 0;
+
 // The preferred scheduling algorithm.
 int scheduling_algorithm;
 
@@ -67,10 +69,10 @@ int scheduling_algorithm;
 
 // USE THESE VALUES FOR SETTING THE scheduling_algorithm VARIABLE.
 #define __EXERCISE_1__   0  // the initial algorithm
-#define __EXERCISE_2__   2  // strict priority scheduling (exercise 2)
-#define __EXERCISE_4A__ 41  // p_priority algorithm (exercise 4.a)
-#define __EXERCISE_4B__ 42  // p_share algorithm (exercise 4.b)
-#define __EXERCISE_7__   7  // any algorithm for exercise 7
+#define __EXERCISE_2__   1  // strict priority scheduling (exercise 2)
+#define __EXERCISE_4A__ 2  // p_priority algorithm (exercise 4.a)
+#define __EXERCISE_4B__ 3  // p_share algorithm (exercise 4.b)
+#define __EXERCISE_7__   4  // any algorithm for exercise 7
 
 
 /*****************************************************************************
@@ -88,7 +90,7 @@ start(void)
 
 	// Set up hardware (schedos-x86.c)
 	segments_init();
-	interrupt_controller_init(0);
+	interrupt_controller_init(1);
 	console_clear();
 
 	// Initialize process descriptors as empty
@@ -96,6 +98,9 @@ start(void)
 	for (i = 0; i < NPROCS; i++) {
 		proc_array[i].p_pid = i;
 		proc_array[i].p_state = P_EMPTY;
+		proc_array[i].p_priority = 200;
+		proc_array[i].p_share=i;
+		proc_array[i].p_runs = 0;
 	}
 
 	// Set up process descriptors (the proc_array[])
@@ -127,7 +132,7 @@ start(void)
 	//   41 = p_priority algorithm (exercise 4.a)
 	//   42 = p_share algorithm (exercise 4.b)
 	//    7 = any algorithm that you may implement for exercise 7
-	scheduling_algorithm = 0;
+	scheduling_algorithm = __EXERCISE_4B__;
 
 	// Switch to the first process.
 	run(&proc_array[1]);
@@ -176,16 +181,39 @@ interrupt(registers_t *reg)
 		current->p_exit_status = reg->reg_eax;
 		schedule();
 
-	case INT_SYS_USER1:
+	case INT_SYS_LOCK:
 		// 'sys_user*' are provided for your convenience, in case you
 		// want to add a system call.
 		/* Your code here (if you want). */
-		run(current);
+	  if (lock) {
+	    current->p_state = P_BLOCKED;
+	    schedule();
+	  }
+	  else {
+	    lock = 1;
+	    run(current);  
+	  }
 
-	case INT_SYS_USER2:
+	case INT_SYS_UNLOCK:{
 		/* Your code here (if you want). */
-		run(current);
-
+	  pid_t pid = (current->p_pid + 1 ) % NPROCS;
+	  lock = 0;
+	  while (pid != current->p_pid) {
+	    if (proc_array[pid].p_state == P_BLOCKED){
+	      proc_array[pid].p_state = P_RUNNABLE;
+	      run(&proc_array[pid]);
+	      break;
+	    }  
+	    pid = (pid + 1) % NPROCS;
+	  }
+	  schedule();
+	}
+	case INT_SYS_PRIORITY:
+	  current->p_priority = reg->reg_eax;
+	  schedule();
+	case INT_SYS_PRINT_CHAR:
+	  *cursorpos++ = reg->reg_eax;
+	  schedule();
 	case INT_CLOCK:
 		// A clock interrupt occurred (so an application exhausted its
 		// time quantum).
@@ -219,7 +247,7 @@ schedule(void)
 {
 	pid_t pid = current->p_pid;
 
-	if (scheduling_algorithm == 0)
+	if (scheduling_algorithm == __EXERCISE_1__) {
 		while (1) {
 			pid = (pid + 1) % NPROCS;
 
@@ -229,7 +257,60 @@ schedule(void)
 			if (proc_array[pid].p_state == P_RUNNABLE)
 				run(&proc_array[pid]);
 		}
-
+	}else if (scheduling_algorithm == __EXERCISE_2__) {
+	  while (1) {
+	    int j;
+	    for (j =1; j < NPROCS; j++) {
+	      if (proc_array[j].p_state == P_RUNNABLE) {
+		run(&proc_array[j]);
+	      }
+	    }
+	  }
+	} else if (scheduling_algorithm == __EXERCISE_4A__) {
+	  int max_priority = -1;
+	  process_t * proc=NULL;
+	  int j;
+	  while (max_priority == -1){
+	    int minFlag = 0;
+	    for (j =1; j < NPROCS; j++) {
+	      if (proc_array[j].p_state == P_RUNNABLE) {
+		if (minFlag && proc_array[j].p_priority < -1) {
+		  proc_array[j].p_priority++;
+		}
+		else if (proc_array[j].p_priority > max_priority) {
+		  max_priority = proc_array[j].p_priority;
+		  proc = &proc_array[j];
+		}
+	      }
+	    }
+	    minFlag = 1;
+	  }
+	  proc->p_priority--;
+	  run(proc);
+	  	  
+	} else if (scheduling_algorithm == __EXERCISE_4B__) {
+	  int max = 0;
+	  pid_t max_pid = 0;
+	  pid_t j = pid;
+	try:
+	  do {
+	    if (proc_array[j].p_state == P_RUNNABLE && proc_array[j].p_runs < proc_array[j].p_share && proc_array[j].p_share > max) {
+	      max = proc_array[j].p_share;
+	      max_pid = j;
+	    }
+	    j = (j + 1) % NPROCS;
+	  } while (j != pid);
+	    if (max != 0) {
+	      proc_array[max_pid].p_runs++;
+	      run(&proc_array[max_pid]);
+	    }
+	  int k;
+	  for (k = 1; k < NPROCS; k++) 
+	    proc_array[k].p_runs = 0;
+	  goto try;
+	    
+	}
+	
 	// If we get here, we are running an unknown scheduling algorithm.
 	cursorpos = console_printf(cursorpos, 0x100, "\nUnknown scheduling algorithm %d\n", scheduling_algorithm);
 	while (1)
