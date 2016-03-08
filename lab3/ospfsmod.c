@@ -40,6 +40,8 @@ extern uint32_t ospfs_length;
 static ospfs_super_t * const ospfs_super =
 	(ospfs_super_t *) &ospfs_data[OSPFS_BLKSIZE];
 
+static int32_t nwrites_to_crash = -1;
+
 static int change_size(ospfs_inode_t *oi, uint32_t want_size);
 static ospfs_direntry_t *find_direntry(ospfs_inode_t *dir_oi, const char *name, int namelen);
 
@@ -540,12 +542,14 @@ ospfs_unlink(struct inode *dirino, struct dentry *dentry)
 	  return -ENOENT;
 	}
 	
-	
+	if (nwrites_to_crash > 0) {nwrites_to_crash--;} else if (nwrites_to_crash == 0) return 0;
 	oi->oi_nlink--;
 
-	if ((oi->oi_ftype != OSPFS_FTYPE_SYMLINK) && (oi->oi_nlink == 0))
+	if ((oi->oi_ftype != OSPFS_FTYPE_SYMLINK) && (oi->oi_nlink == 0)) {
+	  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	    change_size(oi,0);
-
+	}
+	  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	od->od_ino = 0;
 	return 0;
 }
@@ -582,6 +586,7 @@ allocate_block(void)
   void* start = ospfs_block(OSPFS_FREEMAP_BLK);
   while ( i < (ospfs_super->os_nblocks)) {
     if (bitvector_test(start,i)) {
+	  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return i;
       bitvector_clear(start,i);
       return i;
     }
@@ -607,6 +612,7 @@ free_block(uint32_t blockno)
 {
   if (blockno <= (ospfs_super->os_firstinob))
     return;
+	  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return;
   bitvector_set(ospfs_block(OSPFS_FREEMAP_BLK),blockno);
 }
 
@@ -704,6 +710,7 @@ free_block(uint32_t blockno)
 //zero_out function takes a block num block and zero's it out
 
 static void zero_block(uint32_t block) {
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return;
   uint32_t * b = ospfs_block(block);
   int i = 0;
   while(i < OSPFS_NINDIRECT) {
@@ -738,7 +745,9 @@ add_block(ospfs_inode_t *oi)
 	  uint32_t b;
 	  if ((b = allocate_block())) {
 	    zero_block(b);
+	  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	    oi->oi_direct[n] = b;
+	  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	    oi->oi_size+=OSPFS_BLKSIZE;
 	  }
 	  else {
@@ -752,6 +761,7 @@ add_block(ospfs_inode_t *oi)
 	    uint32_t b;
 	    if ((b = allocate_block())) {
 	      zero_block(b);
+	      	  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	      allocated[0] = oi->oi_indirect = b;
 	    }
 	    else
@@ -762,7 +772,9 @@ add_block(ospfs_inode_t *oi)
 	  uint32_t b;
 	  if ((b = allocate_block())) {
 	    zero_block(b);
+	    	  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	    *ptr = b;
+	  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	    oi->oi_size+=OSPFS_BLKSIZE;
 	  }
 	  else {
@@ -782,6 +794,7 @@ add_block(ospfs_inode_t *oi)
 	    uint32_t b;
 	    if ((b = allocate_block())) {
 	      zero_block(b);
+	      	  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	      allocated[0] = oi-> oi_indirect2 = b;
 	    }
 	    else
@@ -794,6 +807,7 @@ add_block(ospfs_inode_t *oi)
 	    if ((b = allocate_block())) {
 	      uint32_t * ptr = ospfs_block(oi->oi_indirect2);
 	      zero_block(b);
+	      if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	      allocated[1] = ptr[d_indirect_block] = b;
 	    }
 	    else {
@@ -806,7 +820,9 @@ add_block(ospfs_inode_t *oi)
 	  uint32_t b;
 	  if ((b = allocate_block())) {
 	    zero_block(b);
+	    if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	    *real_ptr = b;
+	    if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	    oi->oi_size+=OSPFS_BLKSIZE;
 	  }
 	  else {
@@ -852,15 +868,18 @@ remove_block(ospfs_inode_t *oi)
 	uint32_t n = ospfs_size2nblocks(oi->oi_size);
 	if (n <= OSPFS_NDIRECT) {
 	  free_block(n-1);
+	  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  oi->oi_direct[n-1] = 0;
 	} else if ( (n - OSPFS_NDIRECT) <= OSPFS_NINDIRECT) {
 	  uint32_t indirect_num = n - OSPFS_NDIRECT;
 	  uint32_t * ptr = ospfs_block(oi->oi_indirect);
 	  ptr += (n-1);
 	  free_block(*ptr);
+	  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  *ptr = 0;
 	  if (indirect_num ==1) {
 	    free_block(oi->oi_indirect);
+	    if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	    oi->oi_indirect = 0;
 	  }
 
@@ -872,16 +891,20 @@ remove_block(ospfs_inode_t *oi)
 	  uint32_t * real_ptr = ospfs_block(ptr[d_indirect_block]);
 	  real_ptr += d_indirect_index-1;
 	  free_block(*real_ptr);
+	  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  *real_ptr=0;
 	  if (d_indirect_index == 1) {
 	    free_block(ptr[d_indirect_block]);
+	    if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	    ptr[d_indirect_block] = 0;
 	  }
 	  if (d_indirect_num == 1) {
 	    free_block(oi->oi_indirect2);
+	    if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	    oi->oi_indirect2 = 0;
 	  }
 	}
+	if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	oi->oi_size = (n-1) * OSPFS_BLKSIZE;
 	return 0; // Replace this line
 }
@@ -928,9 +951,11 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 {
 	uint32_t old_size = oi->oi_size;
 	while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)) {
+	  if (nwrites_to_crash==0) return 0;
 	  int rt;
 	  if ((rt = add_block(oi)) < 0) {
 	    while (ospfs_size2nblocks(oi->oi_size) >ospfs_size2nblocks(old_size)) {
+	      if (nwrites_to_crash==0) return 0;
 		   if (remove_block(oi) < 0)
 		     return rt;
 	      }
@@ -939,15 +964,18 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 
 	}
 	while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)) {
+	  if (nwrites_to_crash==0) return 0;
 	  int rt;
 	  if ((rt = remove_block(oi)) != 0) {
 	    while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(old_size)) {
+	      if (nwrites_to_crash==0) return 0;
 		   if (add_block(oi) != 0)
 		     return rt;
 	      }
 	      return rt;
 	  }
 	}
+	if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	oi->oi_size = new_size;
 
 	return 0; // Replace this line
@@ -1111,6 +1139,7 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		offset = *f_pos % OSPFS_BLKSIZE;
 		n = OSPFS_BLKSIZE-offset;
 		if (n > count - amount) n = count - amount;
+		if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return count;
 		retval = copy_from_user(&data[offset],buffer,n);
 		if (retval) {
 		  retval = -EFAULT;
@@ -1131,7 +1160,19 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
     done:
 	return (retval >= 0 ? amount : retval);
 }
+//Added ospfs_ioctl, which is the system call to manipulate
+//the nwrites_to_crash system call
 
+static int
+ospfs_ioctl(struct inode *inode, struct file *filp, unsigned int command_arg, unsigned long arg) {
+  if (command_arg == OSPFS_CRASH_COUNTER ) {
+    nwrites_to_crash = arg;
+  }
+  else {
+    return -ENOTTY;
+  }
+  return 0;
+}
 
 // find_direntry(dir_oi, name, namelen)
 //	Looks through the directory to find an entry with name 'name' (length
@@ -1208,6 +1249,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
       return ERR_PTR(rt);
   
   ospfs_direntry_t * ptr = ospfs_inode_data(dir_oi,f_pos);
+  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
   memset(ptr,0,sizeof(ospfs_direntry_t));
   return ptr;
   //    if you find it.
@@ -1257,12 +1299,15 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
   ptr = create_blank_direntry(ospfs_inode(dir->i_ino));
   if (IS_ERR(ptr))
     return PTR_ERR(ptr);
-  
+  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
   ptr->od_ino = src_dentry->d_inode->i_ino;
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
   strncpy(ptr->od_name,dst_dentry->d_name.name,dst_dentry->d_name.len);
+  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
   ptr->od_name[dst_dentry->d_name.len] = 0;
   //inc link count, so we don't delete the file
   if (ospfs_inode(ptr->od_ino) == NULL) return -EIO;
+  if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
   ospfs_inode(ptr->od_ino)->oi_nlink++;
   return 0;
 }
@@ -1318,15 +1363,25 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	  return -ENOSPC;
  found:{
 	  ospfs_inode_t * new_file  = ospfs_inode(inode);
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  new_file->oi_size=0;
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  new_file->oi_ftype = OSPFS_FTYPE_REG;
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  new_file->oi_nlink = 1;
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  new_file->oi_mode = mode;
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  memset(new_file->oi_direct,0,OSPFS_NDIRECT * sizeof(uint32_t));
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  new_file->oi_indirect = 0;
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  new_file->oi_indirect2 = 0;
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  strncpy(ptr->od_name,dentry->d_name.name,dentry->d_name.len);
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  ptr->od_name[dentry->d_name.len] = '\0';
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  ptr->od_ino = inode;
 	    
 	/* Execute this code after your function has successfully created the
@@ -1385,13 +1440,19 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	  return -ENOSPC;
  found:{
 	    ospfs_symlink_inode_t * new_symlink  = (ospfs_symlink_inode_t *)ospfs_inode(inode);
+	    if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  new_symlink->oi_size = strlen(symname);
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  new_symlink->oi_ftype = OSPFS_FTYPE_SYMLINK;
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  new_symlink->oi_nlink = 1;
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  strcpy(new_symlink->oi_symlink,symname);
 	  new_symlink->oi_symlink[new_symlink->oi_size] = '\0';
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  strncpy(ptr->od_name,dentry->d_name.name,dentry->d_name.len);
 	  ptr->od_name[dentry->d_name.len]= '\0';
+if (nwrites_to_crash > 0) nwrites_to_crash--; else if (nwrites_to_crash == 0) return 0;
 	  ptr->od_ino = inode;
 	/* EXERCISE: Your code here. */
 	/* Execute this code after your function has successfully created the
@@ -1449,7 +1510,8 @@ static struct inode_operations ospfs_reg_inode_ops = {
 static struct file_operations ospfs_reg_file_ops = {
 	.llseek		= generic_file_llseek,
 	.read		= ospfs_read,
-	.write		= ospfs_write
+	.write		= ospfs_write,
+	.ioctl          = ospfs_ioctl
 };
 
 static struct inode_operations ospfs_dir_inode_ops = {

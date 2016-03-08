@@ -34,6 +34,7 @@ BASEFILES	:= $(shell find base 2>/dev/null | grep -v '[ 	]')
 
 ospfs.ko all: fsimg.c truncate always
 	$(MAKE) -C $(KERNELPATH) M=$(shell pwd) modules
+	$(CC) main.c -o ioctl_crash
 
 install: ospfs.ko
 	$(MAKE) -C $(KERNELPATH) M=$(shell pwd) modules_install
