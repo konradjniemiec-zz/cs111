@@ -1,7 +1,8 @@
 #ifndef OSPFS_H
 #define OSPFS_H
-// OSPFS Constants and Structure Definitions
 
+// OSPFS Constants and Structure Definitions
+#include <linux/ioctl.h>
 /*****************************************************************************
  * BLOCKS
  *
@@ -57,6 +58,8 @@
 
 // OSPFS's superblock.
 #define OSPFS_MAGIC 0x013101AE  // Related vaguely to '\11\1!'
+
+#define OSPFS_CRASH_COUNTER _IO('a',0)
 
 #define OSPFS_FREEMAP_BLK  2  // First block in free block
                               // bitmap

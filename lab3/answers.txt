@@ -15,6 +15,7 @@ Name:  Konrad Niemiec
 Student ID:  804423978
 Email: konradjniemiec@gmail.com
 
+Now have design problem, with ioctl_crash setting the number of writes.
 
 # Extra credit problems
 #Extra credit problem: none
