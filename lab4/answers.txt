@@ -1,0 +1,24 @@
+1.1:
+
+It takes > 2 threads and some number >1000 iterations, such as 1500, to consistently (>90%) cause a failure.
+
+1. It takes this many iterations because it increases the likelyhood of collision, the threads are active longer
+and are more likely to context switch in the middle of the add operation.
+
+2. Again, with a smaller number of operations, the thread is far less likely to collide with others, and is less
+likely to context switch within the critical section of the operation. The operation is also likely to be correct even
+if a context switch during the critical section occurs, as the values of the counter are so small, that they have a
+higher chance of landing on zero. 
+
+1.2:
+
+After adding yield it only takes >20 options and >2 threads in order to cause a mismatch.
+
+1. The reason the cost decreases is because 
+
+2.
+
+3.
+
+4.
+
