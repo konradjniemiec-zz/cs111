@@ -14,4 +14,4 @@ sltest	:	sltest.c SortedList.h
 clean:
 	rm -rf *.o addtest
 distr:
-	tar -cvzf konrad-lab4.tar.gz *.c SortedList.h answers.txt graphs.pdf
+	tar -cvzf konrad-lab4.tar.gz *.c SortedList.h answers.txt graphs.pdf Makefile
