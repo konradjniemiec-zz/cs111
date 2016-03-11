@@ -14,11 +14,79 @@ higher chance of landing on zero.
 
 After adding yield it only takes >20 options and >2 threads in order to cause a mismatch.
 
-1. The reason the cost decreases is because 
+1. The reason the cost decreases is because the over-head of creating and joining threads
+is a decreasing proportion of each operation. The overhead is generally the same, thus
+when the number of operations rise, this cost is spread out over the operations, thus
+the cost decreases.
 
-2.
+2. The correct cost should be the time taken minus the time to spawn and join x number of
+threads divided by the number of operations. This is the correct ns per op we are looking
+for.
 
-3.
+3. The yield runs do context switching very often, and all this time goes to the kernel to
+save registers and decide which thread should run next.
 
-4.
+4. We could try to count the number of yields, and subtract out that number times the average
+context switching time. This, along with subtracting out the overhead, should get the real
+answer.
 
+1.3:
+
+1. With a low number of threads, the operations aquire the locks without much waiting, and do not
+collide very often with one another, thus are not any slower than without protection.
+
+2. As the number of threads rise, the threads are far more likely to be executing the same portion
+of code, thus they wait on these locking mechanisms instead of going ahead with the operation. They
+are more correct, but they take a longer period of time.
+
+3. With a large number of threads, a majority of them are just mindlessly spinning while only one
+thread does the work, chewing up valuable CPU time. Blocking is a far more efficient implementation,
+and even the atomic sync performs better, as it is doing work and retrying while it is wrong.
+
+2.1:
+
+1. The graph seems to fall as in Part 1, put when iterations get up there, it climbs back up drastically.
+The first drop is for the same reasons as Part 1, but we are doing list operations. Every insert and
+find is an O(N) operation, thus when doing N operations, you are at N * O(N), or ~ N^2 ops. This is the
+reason for the steady rise in the graph. We could multiply by the number of iterations again, in order
+to get a more accurate per operation 
+
+2.2:
+
+1. There is a much higher rise in terms of the mutex operations than Part 1. The spin locks seem similar,
+in that they are high and all over the place. The difference is because we are dealing with more operations
+and the number of threads actually increases the number of things added to the list.
+
+2.3:
+
+1. As the ratio decreases, we see that the operations get faster, at least on the mutex operations.
+The spin operations are very erratic in their time values, but also tend down somewhat. Since there
+are most lists per thread, we are that many times as likely to not collide with the thread, since each
+list has its own locking mechanism, we are reducing the likelyhood of a collision by pointing them
+different ways.
+
+2.threads/list is more useful of an operation because it shows how often we collide. The number of threads
+wouldn't show the speedup by having as many individual locks as the number of threads. This ratio roughly
+shows that relationship, consumers vs. producers almost.
+
+
+
+3.1:
+
+1. The mutex allows for only one thread to come out of the wait. If there were no mutex, all the threads
+waiting on a condition with race once exiting the wait.
+
+2. Other threads need to be able to wait on the condition as well as modify the condition as needed. If it
+was kept locked no one could do anything, causing deadlock.
+
+3. This way only one thread exits the wait, and is able to perform any operations needed. Otherwise we have
+our good old race condition.
+
+4. Then it is optional, this soft modularity is not what we require of the call. There is also a possibility
+of a race condition, if for example, if we release right before calling wait, someone else can come in and
+change the condition when we had it locked. And on the outset as well, if we return before aquiring the lock
+again, another thread can change the condition, and it won't be true anymore. A big race after the wait returns.
+
+5. I don't believe so. We could attempt to prevent the race condition by masking out any interrupts, but I do
+not believe this will work, as calling a system call with masked interrupts seems futile, as when the system
+context switches in, it will have to signal the thread somehow.

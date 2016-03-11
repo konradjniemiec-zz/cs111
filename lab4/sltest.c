@@ -4,20 +4,24 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <time.h>
+#include <string.h>
 #include "SortedList.h"
 
 int opt_yield;
 long long iterations;
-SortedList_t list;
+int num_lists = 1;
+SortedList_t * list;
 
-pthread_mutex_t mutex;
-volatile int spin_lock;
+pthread_mutex_t *  mutex;
+volatile int * spin_lock;
 
+int is_mutex = 0;
+int is_spin = 0;
 
-void (*lock)(void);
-void (*unlock)(void);
+int size_of_string = 10;
+
 char * random_string(void) {
-  int length = rand()%10 + 1;
+  int length = rand()%size_of_string + 1;
   char * string = malloc(sizeof(char) * (length + 1));
   int i;
   for (i = 0; i < length; i++)
@@ -26,70 +30,78 @@ char * random_string(void) {
   return string;
 }
 void *  start_routine(void *start_pos);
-void lock_no_op(void){}
-void unlock_no_op(void){}
 
-void lock_mutex(void){
-  pthread_mutex_lock(&mutex);
-}
-void unlock_mutex(void){
-  pthread_mutex_unlock(&mutex);
-}
-void lock_spin(void) {
-  while (__sync_lock_test_and_set(&spin_lock,1));
-}
-void unlock_spin(void) {
-  __sync_lock_release(&spin_lock);
-}
 void SortedList_insert(SortedList_t *list,SortedListElement_t *element) {
-  while (list->next != NULL && (list->key == NULL || strcmp(list->key,element->key) < 0)) {
-    list = list->next;
-  }
+  SortedListElement_t *p = list; // Initialized at list head
+  SortedListElement_t *n = list->next; // The first element
+
+  
+  
+  while(n != list)
+    {
+      if (strcmp(element->key, n->key) <= 0)
+	break;
+
+      p = n;
+      n = n->next;
+    }
   if (opt_yield & INSERT_YIELD)
     pthread_yield();
-  if (list->next != NULL)
-    list->next->prev = element;
-  element->next = list->next;
-  list->next = element;
-  element->prev = list;
+  element->prev = p;
+  element->next = n;
+  p->next = element;
+  n->prev = element;
 }
 
 int SortedList_delete(SortedListElement_t *element) {
-  if (element->prev != NULL){
-    if (element->prev->next != element) return -1;
-    element->prev->next = element->next;
-  }
+  SortedListElement_t *p = element->prev; // Initialized at list head
+  SortedListElement_t *n = element->next; // The first element
+  //check
+  if (n->prev != element) return -1;
+  if (p->next != element) return -1;
+  //delete yield
   if (opt_yield & DELETE_YIELD)
     pthread_yield();
-  if (element->next !=NULL) {
-    if (element->next->prev != element) return -1;
-    element->next->prev = element->prev;
-  }
-  return 0;
+  p->next = n;
+  n->prev = p;
+  element->next = NULL;
+  element->prev = NULL;
 }
 
 
-int SortedList_length(SortedList_t *list) {
+int SortedList_length(SortedList_t *lists) {
   int count = 0;
- 
-  while ((list = list->next) != NULL) {
-    if (list->prev->next != list) return -1;
-    count++;
+  int final_count = 0;
+  int i;
+  for (i = 0; i < num_lists; i++) {
+    count =0;
+    SortedList_t *list = &lists[i];
+    SortedListElement_t *p = list; // Initialized at list head
+    SortedListElement_t *n = list->next; // The first element
+  
+    while(n != list)
+      {
+	count++;
+	p = n;
+	n = n->next;
+      }
+    final_count+=count;
   }
-  if (opt_yield & SEARCH_YIELD)
-    pthread_yield();
-
-  return count;
+  return final_count;
 }
 
 
 SortedListElement_t * SortedList_lookup(SortedList_t *list, const char *key) {
 
-  while (list != NULL) {
-    if (list->key != NULL && strcmp(list->key,key)==0) {
+  if (list == list->next)
+    return NULL;
+  SortedList_t *head = list;
+  list = list->next;
+  while (list != head) {
+    if (strcmp(list->key, key) == 0) {
+      //yield
       if (opt_yield & SEARCH_YIELD)
 	pthread_yield();
-      unlock();
       return list;
     }
     list = list->next;
@@ -102,10 +114,8 @@ int main(int argc, char** argv) {
   iterations = 1;
   long long threads = 1;
   opt_yield = 0;
-  spin_lock = 0;
-  pthread_mutex_init(&mutex,NULL);
-  lock = lock_no_op;
-  unlock = unlock_no_op;
+
+
   static struct option long_opts[] = {
     {"iter",required_argument,NULL,'i'},
     {"threads",required_argument,NULL,'t'},
@@ -120,9 +130,10 @@ int main(int argc, char** argv) {
     switch (x) {
     case 'l': {
       if (optarg) {
-	int x;
+	int x=0;
 	sscanf(optarg,"%d",&x);
-	//break up number of lists
+	if (x > 0)
+	  num_lists = x;
       }
       else {
 	fprintf(stderr,"No argument provided for iter option\n");
@@ -135,13 +146,10 @@ int main(int argc, char** argv) {
 	sscanf(optarg,"%c",&c);
 	switch (c) {
 	case 'm':
-	  lock = lock_mutex;
-	  unlock = unlock_mutex;
-	  break;
-	
+	  is_mutex = 1;
+	  break;	
 	case 's':
-	  lock = lock_spin;
-	  unlock = unlock_spin;
+	  is_spin = 1;
 	  break;
 
 	}
@@ -195,9 +203,16 @@ int main(int argc, char** argv) {
   }
   pthread_t * pthreads = malloc(sizeof(pthread_t) * threads);
   int i = 0;
-  list.key = NULL;
-  list.next = NULL;
-  list.prev=NULL;
+  list = malloc(sizeof(SortedList_t) * num_lists);
+  spin_lock = malloc(sizeof(int) * num_lists);
+  mutex = malloc(sizeof(pthread_mutex_t) * num_lists);
+  for (i = 0; i < num_lists; i++) {
+    list[i].key = NULL;
+    list[i].next = &list[i];
+    list[i].prev= &list[i];
+    spin_lock[i]=0;
+    pthread_mutex_init(&mutex[i],NULL);
+  }
   SortedListElement_t * elements = malloc(threads*iterations*sizeof(SortedListElement_t));
   for (i = 0; i < threads*iterations; i++) {
     elements[i].key = random_string();
@@ -212,43 +227,86 @@ int main(int argc, char** argv) {
     pthread_join(pthreads[i],NULL);
   
   clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&time[1]);
-  long long operations = threads * iterations;
+  long long operations = threads * 3 * iterations;
   long long length = time[1].tv_nsec - time[0].tv_nsec;
-  fprintf(stdout,"%d threads x (%d iterations x () = %ld operations\n",threads, iterations, operations);
-  fprintf(stdout,"Elapsed Time: %ld ns Nanoseconds per operation: %ld ns\n",length, length/operations);
+  fprintf(stdout,"%d threads x %d iterations x (ins + lookup/del)  = %lld operations\n",threads, iterations,operations);
+  fprintf(stdout,"Elapsed Time: %ld ns Nanoseconds per operation: %lld ns\n",length, length/operations);
 
 
-  if (SortedList_length(&list) != 0) {
-    fprintf(stderr,"ERROR, the final count is: %d\n",SortedList_length(&list));
+  if (SortedList_length(list) != 0) {
+    fprintf(stderr,"ERROR, the final count is: %d\n",SortedList_length(list));
     for (i = 0; i < iterations*threads; i++){
       free((char *)elements[i].key);
     }
     free(elements);
+    free(list);
+    free(mutex);
+	 free((void*)spin_lock);
     exit(1);
   }
   for (i = 0; i < iterations*threads; i++){
     free((char *)elements[i].key);
   }
-      free(elements);
+  free(elements);
+  free(list);
+  free(mutex);
+  free((void*)spin_lock);
   exit(0);
 }
-
+int hash_func(const char * key) { return strlen(key); }
 void *  start_routine(void *start_pos) {
   SortedListElement_t * elements = start_pos;
   int i = 0;
   for (i = 0; i < iterations; i++) {
-    lock();
-    SortedList_insert(&list,&elements[i]);
-    unlock();
+    int which_list = hash_func(elements[i].key) % num_lists;
+    
+    if (is_mutex) {
+      pthread_mutex_lock(&mutex[which_list]);
+    }else if (is_spin) {
+      while (__sync_lock_test_and_set(&spin_lock[which_list],1));
+    }
+    SortedList_insert(&list[which_list],&elements[i]);
+    if (is_mutex) {
+      pthread_mutex_unlock(&mutex[which_list]);
+    } else if (is_spin) {
+      __sync_lock_release(&spin_lock[which_list]);
+    }
   }
+  for (i = 0; i < num_lists; i++) {
+  if (is_mutex) {
+      pthread_mutex_lock(&mutex[i]);
+    }else if (is_spin) {
+      while (__sync_lock_test_and_set(&spin_lock[i],1));
+    }
+  }
+  SortedList_length(list);
+  for (i = 0; i < num_lists; i++) {
+    if (is_mutex) {
+      pthread_mutex_unlock(&mutex[i]);
+    } else if (is_spin) {
+      __sync_lock_release(&spin_lock[i]);
+    }
+  }
+  
+
   for (i = 0; i < iterations; i++) {
-    lock();
-    SortedListElement_t * element = SortedList_lookup(&list,elements[i].key);
+    int which_list = hash_func(elements[i].key) % num_lists;
+
+    if (is_mutex) {
+      pthread_mutex_lock(&mutex[which_list]);
+    }else if (is_spin) {
+      while (__sync_lock_test_and_set(&spin_lock[which_list],1));
+    }
+    SortedListElement_t * element = SortedList_lookup(&list[which_list],elements[i].key);
     if (element != NULL) {
-      if(SortedList_delete(element) == -1) fprintf(stderr,"ERROR IN DELETING ELEMENT %d\n",i);
+      if(SortedList_delete(element) == -1) fprintf(stderr,"ERROR IN DELETING ELEMENT %d %s\n",i,element->key);
     }
     else
-      fprintf(stderr,"Could not find entry element %d\n",i);
-    unlock();
+      fprintf(stderr,"Could not find entry element %d %s\n",i,elements[i].key);
+    if (is_mutex) {
+      pthread_mutex_unlock(&mutex[which_list]);
+    } else if (is_spin) {
+      __sync_lock_release(&spin_lock[which_list]);
+    }
   }
 }
